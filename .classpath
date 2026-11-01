@@ -6,7 +6,6 @@
 		</attributes>
 	</classpathentry>
 	<classpathentry kind="lib" path="lib/mssql-jdbc-13.6.0.jre11.jar"/>
-	<classpathentry kind="src" path="src"/>
 	<classpathentry excluding="bin/|src/" kind="src" path=""/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

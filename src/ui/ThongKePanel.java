@@ -16,6 +16,10 @@ import javax.swing.*;
 import javax.swing.border.*;
 import javax.swing.table.*;
 
+import connectdb.ConnectDB;
+import dao.ThongKeDAO;
+import bus.ThongKeBUS;
+
 /**
  * Giao diện báo cáo thống kê Green Home.
  * Dữ liệu demo, chưa kết nối SQL Server.
@@ -106,8 +110,6 @@ public class ThongKePanel extends JPanel {
         setLayout(new BorderLayout());
         setBackground(BG);
 
-        taoDuLieuMau();
-
         LocalDate now = LocalDate.now();
 
         tuNgay = now.withDayOfMonth(1);
@@ -119,56 +121,48 @@ public class ThongKePanel extends JPanel {
         txtDen.setText(DATE.format(denNgay));
 
         taoGiaoDien();
+        taiDuLieuTuCSDL();
         capNhatBaoCao();
     }
 
-    // ==================== DỮ LIỆU MẪU ====================
+    // ==================== TẢI DỮ LIỆU SQL SERVER ====================
 
-    private void taoDuLieuMau() {
+    private void taiDuLieuTuCSDL() {
+        try {
+            ThongKeBUS bus = new ThongKeBUS(
+                new ThongKeDAO(new ConnectDB())
+            );
+            List<ThongKeDAO.HoaDonThongKe> dsHoaDon =
+                bus.layChiTietHoaDon(tuNgay, denNgay);
+            List<ThongKeDAO.PhieuTraThongKe> dsPhieu =
+                bus.layPhieuDoiTra(tuNgay, denNgay);
 
-        hoaDons.add(new HoaDon(
-            "HD000003",
-            LocalDate.of(2026, 10, 7),
-            "Khách vãng lai",
-            "Tủ lạnh Panasonic",
-            1,
-            9015500
-        ));
+            hoaDons.clear();
+            phieuTras.clear();
 
-        hoaDons.add(new HoaDon(
-            "HD000001",
-            LocalDate.of(2026, 10, 15),
-            "Trần Thị Mai",
-            "Samsung Crystal UHD",
-            1,
-            11610000
-        ));
+            for (ThongKeDAO.HoaDonThongKe h : dsHoaDon) {
+                hoaDons.add(new HoaDon(
+                    h.maHD, h.ngay, h.maKH, h.khachHang,
+                    h.sanPham, h.soLuong, h.thanhTien
+                ));
+            }
 
-        hoaDons.add(new HoaDon(
-            "HD000002",
-            LocalDate.of(2026, 10, 16),
-            "Lê Hoàng Nam",
-            "Tai nghe Bluetooth",
-            2,
-            2500000
-        ));
-
-        // Hai phiếu đang chờ duyệt.
-        // Chưa phát sinh hoàn tiền thật.
-
-        phieuTras.add(new PhieuTra(
-            "DT000001",
-            LocalDate.of(2026, 10, 18),
-            "Chờ duyệt",
-            1250000
-        ));
-
-        phieuTras.add(new PhieuTra(
-            "DT000002",
-            LocalDate.of(2026, 10, 18),
-            "Chờ duyệt",
-            1250000
-        ));
+            for (ThongKeDAO.PhieuTraThongKe p : dsPhieu) {
+                phieuTras.add(new PhieuTra(
+                    p.maPhieu, p.maHD, p.ngay, p.trangThai, p.tienHoan
+                ));
+            }
+        } catch (RuntimeException ex) {
+            hoaDons.clear();
+            phieuTras.clear();
+            JOptionPane.showMessageDialog(
+                this,
+                "Không tải được dữ liệu thống kê từ SQL Server.\n"
+                    + ex.getMessage(),
+                "Lỗi kết nối dữ liệu",
+                JOptionPane.ERROR_MESSAGE
+            );
+        }
     }
 
     // ==================== GIAO DIỆN ====================
@@ -496,6 +490,7 @@ public class ThongKePanel extends JPanel {
             tuNgay = start;
             denNgay = end;
 
+            taiDuLieuTuCSDL();
             capNhatBaoCao();
 
         } catch (DateTimeParseException ex) {
@@ -622,20 +617,22 @@ public class ThongKePanel extends JPanel {
                 "Tiền bán"
             };
 
+            Map<String, long[]> tongTheoHoaDon = new LinkedHashMap<>();
+            Map<String, HoaDon> thongTinHoaDon = new LinkedHashMap<>();
             for (HoaDon h : filtered) {
-
                 String key = nhomNgay(h.ngay);
-
-                bars.merge(
-                    key, h.tien, Long::sum
-                );
-
+                bars.merge(key, h.tien, Long::sum);
+                long[] tong = tongTheoHoaDon.computeIfAbsent(h.ma, k -> new long[2]);
+                tong[0] += h.soLuong;
+                tong[1] += h.tien;
+                thongTinHoaDon.putIfAbsent(h.ma, h);
+            }
+            for (Map.Entry<String, long[]> entry : tongTheoHoaDon.entrySet()) {
+                HoaDon h = thongTinHoaDon.get(entry.getKey());
                 rows.add(new String[] {
-                    DATE.format(h.ngay),
-                    h.ma,
-                    h.khach,
-                    String.valueOf(h.soLuong),
-                    tien(h.tien)
+                    DATE.format(h.ngay), h.ma, h.khach,
+                    String.valueOf(entry.getValue()[0]),
+                    tien(entry.getValue()[1])
                 });
             }
 
@@ -644,6 +641,7 @@ public class ThongKePanel extends JPanel {
         } else if ("Sản phẩm".equals(tab)) {
 
             Set<String> loai = new HashSet<>();
+            Set<String> maHoaDon = new HashSet<>();
 
             Map<String, Long> quantities =
                 new LinkedHashMap<>();
@@ -651,6 +649,7 @@ public class ThongKePanel extends JPanel {
             for (HoaDon h : filtered) {
 
                 loai.add(h.sanPham);
+                maHoaDon.add(h.ma);
 
                 quantities.merge(
                     h.sanPham,
@@ -691,8 +690,8 @@ public class ThongKePanel extends JPanel {
 
             themKpi(
                 "Hóa đơn",
-                String.valueOf(filtered.size()),
-                "Giao dịch có sản phẩm",
+                String.valueOf(maHoaDon.size()),
+                "Hóa đơn đã thanh toán",
                 BLUE
             );
 
@@ -711,34 +710,58 @@ public class ThongKePanel extends JPanel {
 
         } else if ("Khách hàng".equals(tab)) {
 
-            Set<String> members = new HashSet<>();
+            // Chỉ khách có maKH mới được tính là khách hàng thành viên.
+            // Gom tiền theo hóa đơn trước để tránh nhân đôi khi một hóa đơn có nhiều sản phẩm.
+            Set<String> members = new LinkedHashSet<>();
+            Set<String> guestInvoices = new HashSet<>();
+            Map<String, Long> tongTheoHoaDon = new LinkedHashMap<>();
+            Map<String, HoaDon> thongTinHoaDon = new LinkedHashMap<>();
+            Map<String, Integer> soHoaDonTheoKH = new LinkedHashMap<>();
+            Map<String, Long> chiTieuTheoKH = new LinkedHashMap<>();
+            Map<String, String> tenTheoKH = new LinkedHashMap<>();
+            Map<String, Long> tienHoanTheoHD = new HashMap<>();
 
-            Map<String, Long> purchases =
-                new LinkedHashMap<>();
-
-            int guests = 0;
-
-            for (HoaDon h : filtered) {
-
-                purchases.merge(
-                    h.khach, h.tien, Long::sum
-                );
-
-                if ("Khách vãng lai".equals(h.khach)) {
-                    guests++;
-                } else {
-                    members.add(h.khach);
+            // Chỉ tiền hoàn của phiếu Hoàn tất mới được khấu trừ.
+            for (PhieuTra p : phieuTras) {
+                if (trongKhoang(p.ngay) && "Hoàn tất".equals(p.trangThai)) {
+                    tienHoanTheoHD.merge(p.maHD, p.tienHoan, Long::sum);
                 }
-
-                rows.add(new String[] {
-                    h.khach,
-                    h.ma,
-                    DATE.format(h.ngay),
-                    tien(h.tien)
-                });
             }
 
-            bars.putAll(purchases);
+            for (HoaDon h : filtered) {
+                tongTheoHoaDon.merge(h.ma, h.tien, Long::sum);
+                thongTinHoaDon.putIfAbsent(h.ma, h);
+                if (h.maKH == null || h.maKH.isBlank()) {
+                    guestInvoices.add(h.ma);
+                } else {
+                    members.add(h.maKH);
+                }
+            }
+
+            for (Map.Entry<String, Long> entry : tongTheoHoaDon.entrySet()) {
+                HoaDon h = thongTinHoaDon.get(entry.getKey());
+                if (h.maKH == null || h.maKH.isBlank()) {
+                    continue; // Không cộng khách vãng lai vào chi tiêu thành viên.
+                }
+
+                long tienHoan = tienHoanTheoHD.getOrDefault(h.ma, 0L);
+                long chiTieuThucTe = Math.max(0L, entry.getValue() - tienHoan);
+                chiTieuTheoKH.merge(h.maKH, chiTieuThucTe, Long::sum);
+                soHoaDonTheoKH.merge(h.maKH, 1, Integer::sum);
+                tenTheoKH.putIfAbsent(h.maKH, h.khach);
+            }
+
+            for (String maKH : members) {
+                String ten = tenTheoKH.getOrDefault(maKH, maKH);
+                long chiTieu = chiTieuTheoKH.getOrDefault(maKH, 0L);
+                bars.put(ten, chiTieu);
+                rows.add(new String[] {
+                    maKH,
+                    ten,
+                    String.valueOf(soHoaDonTheoKH.getOrDefault(maKH, 0)),
+                    tien(chiTieu)
+                });
+            }
 
             themKpi(
                 "Khách thành viên",
@@ -749,34 +772,35 @@ public class ThongKePanel extends JPanel {
 
             themKpi(
                 "Lượt khách vãng lai",
-                String.valueOf(guests),
-                "Hóa đơn không có hồ sơ",
+                String.valueOf(guestInvoices.size()),
+                "Không cộng vào khách thành viên",
                 BLUE
             );
 
             themKpi(
-                "Tổng giao dịch",
-                String.valueOf(filtered.size()),
-                "Hóa đơn trong kỳ",
+                "Hóa đơn thành viên",
+                String.valueOf(soHoaDonTheoKH.values().stream().mapToInt(Integer::intValue).sum()),
+                "Hóa đơn đã thanh toán",
                 GREEN
             );
 
+            long tongChiTieuThanhVien = chiTieuTheoKH.values().stream().mapToLong(Long::longValue).sum();
             themKpi(
-                "Tổng chi tiêu",
-                tien(doanhThu),
-                "Giá trị giao dịch",
+                "Chi tiêu thành viên",
+                tien(tongChiTieuThanhVien),
+                "Đã trừ tiền hoàn hoàn tất",
                 BLUE
             );
 
             lblBieuDo.setText(
-                "Chi tiêu theo khách hàng"
+                "Chi tiêu thực tế theo khách hàng thành viên"
             );
 
             cols = new String[] {
+                "Mã khách hàng",
                 "Khách hàng",
-                "Hóa đơn",
-                "Ngày",
-                "Chi tiêu"
+                "Số hóa đơn",
+                "Chi tiêu sau hoàn"
             };
 
         // ==================== TAB ĐỔI TRẢ ====================
@@ -817,7 +841,7 @@ public class ThongKePanel extends JPanel {
                     p.ma,
                     DATE.format(p.ngay),
                     p.trangThai,
-                    tien(p.tienHoan)
+                    tien("Hoàn tất".equals(p.trangThai) ? p.tienHoan : 0L)
                 });
             }
 
@@ -869,7 +893,7 @@ public class ThongKePanel extends JPanel {
         // ==================== CẬP NHẬT BẢNG ====================
 
         lblMoTa.setText(
-            "Dữ liệu mẫu từ "
+            "Dữ liệu SQL Server từ "
             + DATE.format(tuNgay)
             + " đến "
             + DATE.format(denNgay)
@@ -1393,11 +1417,12 @@ public class ThongKePanel extends JPanel {
         }
     }
 
-    // ==================== MODEL HÓA ĐƠN MẪU ====================
+    // ==================== MODEL HÓA ĐƠN ====================
 
     private static class HoaDon {
 
         final String ma;
+        final String maKH;
         final String khach;
         final String sanPham;
 
@@ -1409,6 +1434,7 @@ public class ThongKePanel extends JPanel {
         HoaDon(
                 String ma,
                 LocalDate ngay,
+                String maKH,
                 String khach,
                 String sanPham,
                 int soLuong,
@@ -1416,6 +1442,7 @@ public class ThongKePanel extends JPanel {
 
             this.ma = ma;
             this.ngay = ngay;
+            this.maKH = maKH;
             this.khach = khach;
             this.sanPham = sanPham;
             this.soLuong = soLuong;
@@ -1423,11 +1450,12 @@ public class ThongKePanel extends JPanel {
         }
     }
 
-    // ==================== MODEL ĐỔI TRẢ MẪU ====================
+    // ==================== MODEL ĐỔI TRẢ ====================
 
     private static class PhieuTra {
 
         final String ma;
+        final String maHD;
         final String trangThai;
 
         final LocalDate ngay;
@@ -1435,11 +1463,13 @@ public class ThongKePanel extends JPanel {
 
         PhieuTra(
                 String ma,
+                String maHD,
                 LocalDate ngay,
                 String trangThai,
                 long tienHoan) {
 
             this.ma = ma;
+            this.maHD = maHD;
             this.ngay = ngay;
             this.trangThai = trangThai;
             this.tienHoan = tienHoan;
@@ -1453,7 +1483,7 @@ public class ThongKePanel extends JPanel {
         SwingUtilities.invokeLater(() -> {
 
             JFrame frame = new JFrame(
-                "Green Home - Thống kê (demo)"
+                "Green Home - Báo cáo & thống kê"
             );
 
             frame.setDefaultCloseOperation(
