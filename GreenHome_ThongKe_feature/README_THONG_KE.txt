@@ -1,1 +1,0 @@
-Copy and replace the three Java files at the same paths in your Eclipse project. Refresh, Project > Clean, then test with SQL Server config/db.properties. Extract and commit the Java source files; do not commit this ZIP as a source file.
