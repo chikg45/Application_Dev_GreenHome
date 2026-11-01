@@ -1,0 +1,28 @@
+CÁC FILE THÊM/SỬA SO VỚI GreenHome_ThongKe_develop.zip
+
+.gitignore
+config/db.properties.example
+database/03_TichHopDoiTra.sql
+entity/HoSoDoiTra.java
+src/bus/DangNhapBUS.java
+src/bus/DoiTraBUS.java
+src/dao/DangNhapDAO.java
+src/dao/DoiTraDAO.java
+src/dao/ThongKeDAO.java
+src/ui/BanHangChucNangPanel.java
+src/ui/BanHangPanel.java
+src/ui/DoiTraPanel.java
+src/ui/HoaDonDialog.java
+src/ui/KhachHangPanel.java
+src/ui/KhuyenMaiPanel.java
+src/ui/LichLamViecPanel.java
+src/ui/LoginFrame.java
+src/ui/MainFrame.java
+src/ui/NhanVienPanel.java
+src/ui/SanPhamPanel.java
+src/ui/ThongKePanel.java
+
+Không push config/db.properties vì có mật khẩu SQL của máy bạn.
+Các Entity có sẵn của nhóm không thay đổi. Chỉ thêm entity/HoSoDoiTra.java.
+Các file hướng dẫn có thể push cùng nếu nhóm muốn.
+Nếu đã áp dụng bản UI trống/đăng nhập trước đó thì Git có thể hiện ít file đổi hơn.

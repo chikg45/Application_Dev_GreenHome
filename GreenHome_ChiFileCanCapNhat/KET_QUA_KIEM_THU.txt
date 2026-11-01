@@ -1,0 +1,18 @@
+PASS 1: Base schema + additive return migration run twice without sample data
+PASS 2: Login authenticates actual SQL employee before handing over to sales/returns
+PASS 3: Reports empty with no transactions and reject invalid date range
+PASS 4: Whole-invoice request persists exact refund; duplicate/other-employee/self-approval/premature completion blocked
+PASS 5: Reject/resubmit/approve state transitions and confirmation/method validation
+PASS 6: Completion atomically restores stock/points, writes ledger and actual timestamp, preserves invoice, prevents replay
+PASS 7: Same-SKU exchange tracks serials; faulty stock remains separate and cannot be sold by sales BUS
+PASS 8: Equivalent product allowed only when same SKU unavailable and category/price match
+PASS 9: Exchange prioritizes same SKU and cannot consume inventory reserved by draft orders
+PASS 10: SQL failure after inventory updates rolls back stock, points, ledger, status
+PASS 11: Point recovery refuses negative customer balances before any inventory write
+PASS 12: Seven-day deadline and technical/intact/accessory eligibility enforced in BUS
+PASS 13: Multi-line requests include every row; imported/altered partial requests cannot be approved
+PASS 14: Concurrent completion commits once; competing session cannot duplicate inventory
+PASS 15: Report DAO preserves product IDs and records refunds in actual completion period with member ID
+PASS 16: Return UI loads SQL; report UI keeps distinct SKUs and refund-only members; signed chart renders headlessly
+PASS 17: Disabling SQL account also blocks existing return sessions
+ALL 17 NATIVE SQL RETURN/REPORT TEST GROUPS PASSED

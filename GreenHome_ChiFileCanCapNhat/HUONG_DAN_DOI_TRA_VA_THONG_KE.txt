@@ -1,0 +1,138 @@
+GREENHOME - BÁN HÀNG, THỐNG KÊ VÀ ĐỔI/TRẢ DÙNG SQL SERVER
+
+1. CÁCH ĐƯA VÀO PROJECT ĐANG CLONE
+- Giải nén ZIP này. Bên trong là Application_Dev_GreenHome-develop.
+- Chép nội dung bên trong vào đúng gốc project Git đang làm, chọn ghi đè.
+  Không tạo một thư mục project lồng bên trong project hiện tại.
+- Những file Entity dùng chung đã có và BanHangBUS/BanHangDAO giữ nguyên
+  từng byte so với ZIP thống kê bạn gửi. Chỉ thêm entity/HoSoDoiTra.java.
+- Các UI được giữ bố cục chính; bỏ dữ liệu mẫu như yêu cầu trước đó.
+  Màn đổi/trả có thêm xác nhận điều kiện và hộp chọn hàng đổi cần cho nghiệp vụ.
+- Trong Eclipse, chọn project > F5 > Project > Clean. Dùng JDK 21 và JAR JDBC
+  đã có trong lib. Không cần thêm thư viện Java bên ngoài.
+
+2. CHẠY DATABASE
+- Database tên GreenHome.
+- Nếu máy đã có GreenHome đúng schema: chạy thêm database/03_TichHopDoiTra.sql.
+- Nếu chưa có: chạy 01_TaoDatabaseGreenHome.sql, sau đó 03_TichHopDoiTra.sql.
+- Chạy bằng sa trong SSMS. Không cần file cấp quyền greenhome_app khi dùng sa.
+- Script 03 bổ sung cột lưu người duyệt/hoàn tất, ngày hoàn tất, thông tin
+  liên hệ/kiểm tra, mã hàng giao đổi; thêm SERIAL_DOI_TRA để theo dõi Serial
+  nhận lại/giao đổi; bổ sung liên kết Serial với phiếu đổi trả.
+- Không xóa bảng, không sửa hóa đơn gốc, không thêm dữ liệu mẫu.
+- Script 03 đã được thử chạy lại hai lần. Nếu có nhiều phiếu cũ đang xử lý
+  hoặc đã hoàn tất cho cùng hóa đơn thì ràng buộc mới sẽ từ chối; cần đối chiếu
+  dữ liệu cũ, không tự xóa phiếu để chạy tiếp.
+- Chỉ mở ứng dụng sau khi script nâng cấp chạy thành công.
+
+3. KẾT NỐI VÀ ĐĂNG NHẬP
+- config/db.properties đã dùng localhost:1433, GreenHome và tài khoản sa với
+  mật khẩu bạn cung cấp. Nếu SQL Server dùng cổng/server khác thì sửa url.
+- File này chỉ dùng trên máy bạn, đã được .gitignore loại khỏi việc thêm mới.
+  Nếu Git đã theo dõi file từ trước, .gitignore không tự bỏ theo dõi file đó.
+- db.properties.example được để trống mật khẩu cho các máy khác tự điền.
+- Chạy src/ui/LoginFrame.java. MainFrame.main và ThongKePanel.main cũng mở
+  đăng nhập để đi vào ứng dụng theo vai trò.
+- Tài khoản màn hình đăng nhập lấy từ dbo.TAI_KHOAN, nhân viên từ NHAN_VIEN;
+  không phải SQL Login sa. Mật khẩu được đối chiếu theo định dạng văn bản hiện
+  tại của schema nhóm; bản này không tự đổi mật khẩu hoặc băm lại dữ liệu.
+- Đăng nhập thành công mở bán hàng. Quản lý có thêm menu Thống kê và xem/duyệt
+  tất cả phiếu đổi trả. Nhân viên chỉ xem/xử lý phiếu mình tiếp nhận.
+- Không có nhân viên/tài khoản/sản phẩm trong SQL thì cần nhập dữ liệu thật.
+  Bản này không tự tạo tài khoản hay sản phẩm mẫu.
+- Có thể kiểm tra các tài khoản hiện có trong SSMS:
+
+USE GreenHome;
+SELECT t.tenDangNhap,t.vaiTro,t.dangHoatDong,n.maNV,n.hoTen
+FROM dbo.TAI_KHOAN t JOIN dbo.NHAN_VIEN n ON n.maNV=t.maNV;
+
+Nếu chưa có: nhập hồ sơ thật vào NHAN_VIEN trước, rồi TAI_KHOAN với maNV
+khớp hồ sơ, vaiTro là QuanLy hoặc NhanVienBanHang, dangHoatDong=1.
+
+4. LUỒNG ĐỔI/TRẢ
+A. Nhân viên hoặc quản lý mở Đổi / trả > Tiếp nhận đổi / trả.
+B. Tra cứu hóa đơn, chọn hóa đơn còn trong hạn 7 ngày tính theo ngày mua.
+   Xử lý toàn bộ hóa đơn, không chọn trả một phần; số lượng được khóa theo
+   hóa đơn gốc. Hóa đơn đã có yêu cầu chờ/đã duyệt/hoàn tất không lập trùng.
+C. Chọn hoàn tiền hoặc đổi hàng, nhập liên hệ, SĐT, lý do, hiện trạng, phụ kiện.
+   Xác nhận lỗi kỹ thuật không do khách hoặc hàng nguyên vẹn, đủ phụ kiện.
+D. Gửi quản lý duyệt. Lúc này chỉ lưu phiếu, chưa đổi tiền/tồn/điểm.
+E. Quản lý đăng nhập, mở phiếu, phê duyệt hoặc từ chối kèm lý do.
+   Phiếu bị từ chối/chờ duyệt có thể sửa và gửi lại trong thời hạn tiếp nhận.
+   Không được sửa phiếu đã duyệt/hoàn tất. Hạn 7 ngày kiểm tra khi tiếp nhận;
+   phiếu tiếp nhận đúng hạn có thể được hoàn tất sau khi đã được duyệt.
+F. Nhân viên tiếp nhận hoặc quản lý mở phiếu đã duyệt, bấm Hoàn tất đổi / trả.
+   - Phân loại hàng nhận lại: mặc định hàng lỗi/chưa sẵn bán. Chỉ hàng nguyên
+     vẹn, đủ phụ kiện, không lỗi kỹ thuật mới được chọn nhập sẵn bán.
+   - Hoàn tiền: chọn tiền mặt/chuyển khoản và xác nhận đã hoàn tiền, nhận hàng.
+   - Đổi hàng: chọn mã giao đổi cho từng dòng hóa đơn, xác nhận nhận/giao đủ hàng.
+G. BUS kiểm tra lại quyền, trạng thái, tồn, lượng đang giữ, Serial, điểm rồi
+   DAO mới ghi toàn bộ thay đổi trong một transaction. Có lỗi thì rollback.
+
+Đây là phần ghi nhận nghiệp vụ thu/chi do nhân viên xác nhận. Ứng dụng không
+kết nối ngân hàng và không tự chuyển tiền. Chỉ xác nhận khi giao dịch thực tế
+đã được nhân viên đối chiếu.
+
+5. QUY TẮC TIỀN, ĐIỂM, HÀNG ĐỔI
+- Hoàn tiền theo toàn bộ số thực thu trên hóa đơn, sau khuyến mãi và giảm bằng
+  điểm; không lấy giá hiện tại, không chia đơn giá rồi làm tròn gây mất tiền lẻ.
+- Hoàn tiền: phục hồi điểm đã sử dụng và thu hồi điểm đã tích từ hóa đơn.
+  Ghi LICH_SU_DIEM loại DieuChinh khi có biến động. Không cho số dư âm;
+  nếu khách đã tiêu hết điểm cần thu hồi thì chặn hoàn tất để xử lý trước.
+- Đổi hàng có giá trị tương đương: không phát sinh tiền hoàn hay cộng điểm mới.
+- Ưu tiên đổi cùng mã khi còn đủ hàng sẵn bán. Nếu không đủ, cho chọn sản phẩm
+  cùng danh mục và bằng đơn giá gốc; chưa hỗ trợ đổi hàng có bù chênh lệch giá.
+- Khi hoàn tất mới lấy tồn giao đổi; lượng đã giữ trong đơn nháp không bị lấy
+  để giao đổi. Nếu tồn đã đổi thì cần tải lại/chọn lại hàng trước khi hoàn tất.
+- Giữ quy ước CSDL nhóm: soLuongTon là lượng sẵn bán, soLuongLoi là lượng lỗi
+  riêng. Nhận hàng lỗi chỉ tăng soLuongLoi, không tăng soLuongTon.
+- Serial gốc được đối chiếu hóa đơn, nhận lại chuyển SanBan hoặc Loi. Serial
+  hàng giao đổi được đánh dấu DaBan và liên kết phiếu; lưu cả hai hướng trong
+  SERIAL_DOI_TRA. Không sửa SERIAL_HOA_DON hay chi tiết hóa đơn gốc.
+- Mã khuyến mãi cá nhân trong bản bán hàng hiện tại không bị xóa/tiêu hao khi
+  bán nên không có thao tác tái tạo mã khi hoàn. Giữ nguyên liên kết mã với
+  khách hàng và hiệu lực khuyến mãi; không tự gia hạn mã hết hạn.
+- Mỗi hóa đơn chỉ hoàn tất một lần đổi/trả. Bản này chưa có chu kỳ đổi nhiều
+  lần nối tiếp từ sản phẩm đã giao đổi.
+
+6. KIỂM TRA VÀ SỬA THỐNG KÊ
+- Đã có đọc SQL, lọc ngày, 4 tab, biểu đồ và xuất bảng; giữ các phần này.
+- Sửa gom sản phẩm theo maSP, không gộp hai mã khác nhau chỉ vì trùng tên.
+  Tab sản phẩm gom số lượng/doanh thu theo mã, sắp bán chạy theo số lượng.
+- Tiền hoàn chỉ trừ khi phiếu HoanTat, tính vào ngày hoàn tất thực tế.
+  Phiếu chờ/duyệt/từ chối chưa ghi nhận tiền hoàn. Đổi hàng không ghi doanh
+  thu bán lần hai và không tính thành hoàn tiền.
+- Với phiếu HoanTat cũ chưa có ngayHoanTat, tạm dùng ngayLap để tương thích;
+  nếu có dữ liệu lịch sử thực tế cần đối chiếu lại ngày hoàn tất cũ.
+- Khách thành viên tính theo maKH. Một hóa đơn nhiều dòng chỉ được đếm một lần.
+  Tiền hoàn của giao dịch mua ở kỳ trước vẫn trừ vào dòng tiền khách ở kỳ hoàn;
+  vì vậy chi tiêu thuần trong kỳ có thể âm. Biểu đồ hỗ trợ cột âm màu đỏ.
+- Chuyển sang menu Bán hàng, Đổi/trả hoặc Thống kê sẽ tải lại dữ liệu; bộ lọc
+  và nút áp dụng/tháng này ở thống kê tiếp tục tải lại theo thời gian đã chọn.
+- Tổng quan dashboard chưa có DAO riêng nên để trống, không hiển thị số liệu
+  giả. Các màn quản lý khác vẫn chờ phần của người phụ trách, chưa thêm DAO.
+  Form ở các màn đó chưa nối SQL vẫn chỉ xử lý trong bộ nhớ.
+
+7. ĐỐI CHIẾU FILE ĐÃ SỬA
+- Entity gốc, enum gốc, BanHangBUS, BanHangDAO, ConnectDB, Jdbc, SQL tạo CSDL
+  và JDBC JAR của ZIP bạn gửi được giữ nguyên.
+- Thêm HoSoDoiTra.java để mang thông tin bổ sung, vẫn dùng PhieuDoiTra,
+  HoaDon, NhanVien dùng chung; không sửa các lớp chung này.
+- Thêm DoiTraBUS/DAO; ghép lại DangNhapBUS/DAO vì ZIP mới chưa có bản nối
+  đăng nhập đã làm ở lượt trước.
+- UI dùng chung có thay đổi: DoiTraPanel, MainFrame, LoginFrame, ThongKePanel,
+  BanHangChucNangPanel (thêm tải lại sau đổi trả). Các UI còn lại chỉ bỏ dữ liệu
+  mẫu như yêu cầu trước, không thêm nghiệp vụ của người khác.
+- Danh sách chính xác trong CAC_FILE_CAN_PUSH.txt. Kiểm tra diff trước khi stage.
+- Không commit config/db.properties. Có thể commit file example không mật khẩu.
+
+8. KIỂM THỬ ĐÃ THỰC HIỆN
+- Biên dịch toàn bộ 53 file Java bằng JDK 21: đạt.
+- 17 nhóm kiểm thử trên SQL Server 2025 trong database QA riêng: đạt.
+- Bao gồm nâng cấp schema chạy lại, đăng nhập thật, hóa đơn nhiều dòng, tiền
+  hoàn chính xác, điểm, trạng thái/quyền, tồn đang giữ, hàng lỗi không bán lại,
+  Serial hai hướng, hai phiên cùng hoàn tất, rollback lỗi SQL, báo cáo hoàn
+  khác kỳ mua, sản phẩm trùng tên khác mã và hiển thị cột âm trong biểu đồ.
+- Không đưa fixtures, tài khoản QA hay dữ liệu mẫu vào gói giao.
+- Chưa chạy trên SQL Server máy bạn hoặc thao tác cửa sổ trong Eclipse máy bạn.
+  Cần cấu hình đúng server/cổng và chạy migration trước khi dùng.
