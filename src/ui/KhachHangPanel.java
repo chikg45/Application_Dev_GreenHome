@@ -71,51 +71,13 @@ public class KhachHangPanel extends JPanel {
         setLayout(new BorderLayout());
         setBackground(BG);
 
-        taoDuLieuMau();
         taoGiaoDien();
         taiDanhSach();
     }
 
     // ==================== DU LIEU MAU ====================
 
-    private void taoDuLieuMau() {
 
-        khachHang.add(new KhachHangMau(
-            "KH000000001",
-            "Nguyễn Văn An",
-            "0901234567",
-            "Gò Vấp, TP. Hồ Chí Minh",
-            1230,
-            "—"
-        ));
-
-        khachHang.add(new KhachHangMau(
-            "KH000000002",
-            "Trần Thị Mai",
-            "0932345678",
-            "TP. Hồ Chí Minh",
-            296,
-            "15/10/2026"
-        ));
-
-        khachHang.add(new KhachHangMau(
-            "KH000000003",
-            "Lê Hoàng Nam",
-            "0383456789",
-            "TP. Hồ Chí Minh",
-            70,
-            "16/10/2026"
-        ));
-
-        khachHang.add(new KhachHangMau(
-            "KH000000004",
-            "Phúc",
-            "0909090909",
-            "",
-            0,
-            "—"
-        ));
-    }
 
     // ==================== TAO GIAO DIEN ====================
 
@@ -194,8 +156,8 @@ public class KhachHangPanel extends JPanel {
 
         stats.add(statCard(
             "Mã ưu đãi còn hiệu lực",
-            text("2", 24, Font.BOLD, new Color(157, 190, 250)),
-            "Chỉ là dữ liệu giao diện mẫu",
+            text("—", 24, Font.BOLD, new Color(157, 190, 250)),
+            "Chưa có dữ liệu ưu đãi",
             "◇"
         ));
 
@@ -732,8 +694,6 @@ public class KhachHangPanel extends JPanel {
 
         // ==================== THONG KE ====================
 
-        // Du lieu giao dich mau theo anh thiet ke
-        boolean coGiaoDichMau = "KH000000002".equals(kh.ma);
 
         JPanel stats = new JPanel(
             new GridLayout(1, 3, 12, 0)
@@ -754,12 +714,12 @@ public class KhachHangPanel extends JPanel {
 
         stats.add(infoStat(
             "Giao dịch mua",
-            coGiaoDichMau ? "1" : "0"
+            "0"
         ));
 
         stats.add(infoStat(
             "Chi tiêu sau hoàn",
-            coGiaoDichMau ? "11.610.000 đ" : "0 đ"
+            "0 đ"
         ));
 
         details.add(stats);
@@ -772,61 +732,12 @@ public class KhachHangPanel extends JPanel {
 
         details.add(Box.createVerticalStrut(10));
 
-        if (coGiaoDichMau) {
 
-            JPanel order = borderedRow();
-            order.setLayout(new BorderLayout(10, 0));
-
-            JPanel orderText = new JPanel();
-            orderText.setOpaque(false);
-
-            orderText.setLayout(
-                new BoxLayout(orderText, BoxLayout.Y_AXIS)
-            );
-
-            orderText.add(text(
-                "HD000001",
-                12, Font.BOLD, TEXT
-            ));
-
-            orderText.add(Box.createVerticalStrut(6));
-
-            orderText.add(text(
-                "23:25 15/10/2026",
-                11, Font.PLAIN, MUTED
-            ));
-
-            order.add(orderText, BorderLayout.WEST);
-
-            JPanel right = new JPanel(
-                new FlowLayout(FlowLayout.RIGHT, 10, 8)
-            );
-
-            right.setOpaque(false);
-
-            right.add(text(
-                "11.610.000 đ",
-                12, Font.BOLD, TEXT
-            ));
-
-            JButton detail = button("Xem chi tiết", false);
-
-            detail.addActionListener(e -> {
-                HoaDonDialog.moChiTiet(dialog, "HD000001");
-            });
-
-            right.add(detail);
-
-            order.add(right, BorderLayout.EAST);
-
-            details.add(order);
-
-        } else {
 
             details.add(emptyRow(
-                "Chưa có dữ liệu lịch sử mua hàng trong bản mẫu."
+                "Chưa có dữ liệu lịch sử mua hàng ."
             ));
-        }
+        
 
         details.add(Box.createVerticalStrut(18));
 
@@ -836,41 +747,12 @@ public class KhachHangPanel extends JPanel {
 
         details.add(Box.createVerticalStrut(10));
 
-        if (coGiaoDichMau) {
 
-            JPanel coupon = borderedRow();
-
-            coupon.setLayout(
-                new BoxLayout(coupon, BoxLayout.Y_AXIS)
-            );
-
-            coupon.add(text(
-                "MAI5  ·  Còn hiệu lực (mẫu)",
-                12, Font.BOLD, TEXT
-            ));
-
-            coupon.add(Box.createVerticalStrut(7));
-
-            coupon.add(text(
-                "Giảm 5% · tối đa 300.000 đ · đơn từ 500.000 đ",
-                11, Font.PLAIN, MUTED
-            ));
-
-            coupon.add(Box.createVerticalStrut(5));
-
-            coupon.add(text(
-                "02/10/2026 – 16/11/2026",
-                11, Font.PLAIN, MUTED
-            ));
-
-            details.add(coupon);
-
-        } else {
 
             details.add(emptyRow(
-                "Chưa có ưu đãi cá nhân trong dữ liệu mẫu."
+                "Chưa có ưu đãi cá nhân ."
             ));
-        }
+        
 
         details.add(Box.createVerticalStrut(18));
 
@@ -880,59 +762,12 @@ public class KhachHangPanel extends JPanel {
 
         details.add(Box.createVerticalStrut(10));
 
-        if (coGiaoDichMau) {
 
-            JPanel points = new JPanel(
-                new BorderLayout(12, 0)
-            );
-
-            points.setOpaque(false);
-
-            points.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-            points.setMaximumSize(
-                new Dimension(Integer.MAX_VALUE, 50)
-            );
-
-            JPanel pointText = new JPanel();
-            pointText.setOpaque(false);
-
-            pointText.setLayout(
-                new BoxLayout(pointText, BoxLayout.Y_AXIS)
-            );
-
-            pointText.add(text(
-                "HD000001",
-                11, Font.BOLD, TEXT
-            ));
-
-            pointText.add(Box.createVerticalStrut(5));
-
-            pointText.add(text(
-                "23:25 15/10/2026 · Số dư 296 điểm",
-                11, Font.PLAIN, MUTED
-            ));
-
-            points.add(pointText, BorderLayout.WEST);
-
-            points.add(
-                text(
-                    "+116 điểm",
-                    12,
-                    Font.BOLD,
-                    new Color(56, 181, 122)
-                ),
-                BorderLayout.EAST
-            );
-
-            details.add(points);
-
-        } else {
 
             details.add(emptyRow(
-                "Chưa có lịch sử điểm trong dữ liệu mẫu."
+                "Chưa có lịch sử điểm ."
             ));
-        }
+        
 
         // ==================== SCROLL ====================
 

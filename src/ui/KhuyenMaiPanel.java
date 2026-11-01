@@ -41,14 +41,7 @@ public class KhuyenMaiPanel extends JPanel {
     private final List<ChuongTrinh> dangXem =
         new ArrayList<>();
 
-    private final String[][] sanPham = {
-        {"SP0001", "iPhone 15"},
-        {"SP0002", "Dell Inspiron 15"},
-        {"SP0003", "Samsung Crystal UHD"},
-        {"SP0004", "Tai nghe Bluetooth"},
-        {"SP0005", "Tủ lạnh Panasonic"},
-        {"SP0006", "Máy giặt LG Inverter"}
-    };
+    private final String[][] sanPham = new String[0][2];
 
     private final JTextField txtTim = new JTextField();
 
@@ -80,79 +73,13 @@ public class KhuyenMaiPanel extends JPanel {
         setLayout(new BorderLayout());
         setBackground(BG);
 
-        taoDuLieuMau();
         taoGiaoDien();
         taiBang();
     }
 
     // ==================== DU LIEU MAU ====================
 
-    private void taoDuLieuMau() {
 
-        ChuongTrinh a = new ChuongTrinh(
-            "KM0001",
-            "Ưu đãi điện máy 5%",
-            false
-        );
-
-        a.mucGiam = 5;
-
-        a.sanPhams.addAll(
-            Arrays.asList("SP0001", "SP0002", "SP0005")
-        );
-
-        ds.add(a);
-
-        ChuongTrinh b = new ChuongTrinh(
-            "KM0002",
-            "Ưu đãi điện máy 10%",
-            false
-        );
-
-        b.mucGiam = 10;
-        b.sanPhams.add("SP0003");
-
-        ds.add(b);
-
-        ChuongTrinh c = new ChuongTrinh(
-            "KM0003",
-            "Ưu đãi điện máy 5%",
-            false
-        );
-
-        c.mucGiam = 5;
-        c.sanPhams.add("SP0006");
-
-        ds.add(c);
-
-        // Ưu đãi cá nhân mẫu
-
-        ChuongTrinh d = new ChuongTrinh(
-            "MAI5",
-            "Ưu đãi cá nhân Mai 5%",
-            true
-        );
-
-        d.maKhach = "KH000000002";
-        d.mucGiam = 5;
-        d.toiThieu = 500000;
-        d.toiDa = 300000;
-
-        ds.add(d);
-
-        ChuongTrinh e = new ChuongTrinh(
-            "AN10",
-            "Ưu đãi cá nhân An 10%",
-            true
-        );
-
-        e.maKhach = "KH000000001";
-        e.mucGiam = 10;
-        e.toiThieu = 1000000;
-        e.toiDa = 500000;
-
-        ds.add(e);
-    }
 
     // ==================== GIAO DIEN CHINH ====================
 
@@ -891,11 +818,11 @@ public class KhuyenMaiPanel extends JPanel {
         // ==================== THOI GIAN ====================
 
         JTextField tu = input(
-            sua ? DATE.format(cu.tu) : "02/10/2026"
+            sua ? DATE.format(cu.tu) : DATE.format(LocalDate.now())
         );
 
         JTextField den = input(
-            sua ? DATE.format(cu.den) : "16/11/2026"
+            sua ? DATE.format(cu.den) : DATE.format(LocalDate.now())
         );
 
         JPanel dateRow = new JPanel(

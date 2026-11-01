@@ -138,6 +138,18 @@ public class BanHangChucNangPanel extends JPanel {
 
     // ==================== DỮ LIỆU TỪ DAO ====================
 
+    public void lamMoi() {
+        try {
+            banHangBUS.lamMoiDuLieu();
+            sanPhams.clear(); khachHangs.clear(); napDuLieuBanHang();
+            if (khachDaChon != null) {
+                String ma = khachDaChon.getMaKH();
+                khachDaChon = khachHangs.stream().filter(k -> ma.equals(k.getMaKH())).findFirst().orElse(null);
+            }
+            locSanPham(); capNhatGioHang();
+        } catch (RuntimeException ex) { thongBao(ex.getMessage()); }
+    }
+
     private void napDuLieuBanHang() {
         sanPhams.addAll(banHangBUS.getSanPhams());
         khachHangs.addAll(banHangBUS.getKhachHangs());

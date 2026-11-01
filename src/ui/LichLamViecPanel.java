@@ -88,7 +88,6 @@ public class LichLamViecPanel extends JPanel {
         setBackground(BG);
         setLayout(new BorderLayout());
 
-        taoDuLieuMau();
         taoGiaoDien();
         capNhatLich();
     }
@@ -98,67 +97,15 @@ public class LichLamViecPanel extends JPanel {
 
         this(
             laQuanLy,
-            laQuanLy ? "Trần Minh Quân" : "Trần Thị Linh"
+            ""
         );
     }
 
     // ==================== DU LIEU MAU ====================
 
-    private void taoDuLieuMau() {
 
-        nhanViens.add(
-            new NhanVien("NV0001", "Nguyễn Văn A")
-        );
 
-        nhanViens.add(
-            new NhanVien("NV0002", "Trần Thị Linh")
-        );
 
-        nhanViens.add(
-            new NhanVien("NV0003", "Lê Hoàng Minh")
-        );
-
-        nhanViens.add(
-            new NhanVien("NV0004", "Trần Minh Quân")
-        );
-
-        // Lich mau theo tuan hien tai
-
-        taoCaMau(0, 0, Ca.SANG);
-        taoCaMau(0, 1, Ca.CHIEU);
-        taoCaMau(0, 2, Ca.TOI);
-        taoCaMau(0, 3, Ca.SANG);
-        taoCaMau(0, 5, Ca.TOI);
-        taoCaMau(0, 6, Ca.SANG);
-
-        taoCaMau(1, 0, Ca.CHIEU);
-        taoCaMau(1, 1, Ca.TOI);
-        taoCaMau(1, 2, Ca.SANG);
-        taoCaMau(1, 4, Ca.TOI);
-        taoCaMau(1, 5, Ca.SANG);
-        taoCaMau(1, 6, Ca.CHIEU);
-
-        taoCaMau(2, 0, Ca.TOI);
-        taoCaMau(2, 1, Ca.SANG);
-        taoCaMau(2, 3, Ca.TOI);
-        taoCaMau(2, 4, Ca.SANG);
-        taoCaMau(2, 5, Ca.CHIEU);
-        taoCaMau(2, 6, Ca.TOI);
-    }
-
-    private void taoCaMau(
-            int indexNhanVien,
-            int ngayTrongTuan,
-            Ca ca) {
-
-        phanCongs.add(new PhanCong(
-            maTiepTheo++,
-            nhanViens.get(indexNhanVien),
-            dauTuan.plusDays(ngayTrongTuan),
-            ca,
-            ""
-        ));
-    }
 
     // ==================== GIAO DIEN CHINH ====================
 

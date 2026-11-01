@@ -1,6 +1,10 @@
 package ui;
 
 import java.awt.*;
+import bus.DoiTraBUS;
+import entity.HoSoDoiTra.*;
+import java.util.Map;
+import java.util.LinkedHashMap;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.time.LocalDate;
@@ -22,7 +26,7 @@ import javax.swing.table.DefaultTableModel;
 
 /**
  * Giao diện đổi/trả dùng chung cho nhân viên và quản lý.
- * Dữ liệu hiện tại là dữ liệu demo, chưa kết nối SQL Server.
+ * Dữ liệu đổi/trả được đọc và lưu qua BUS/DAO vào SQL Server.
  */
 public class DoiTraPanel extends JPanel {
 
@@ -43,17 +47,17 @@ public class DoiTraPanel extends JPanel {
 
     // ==================== DỮ LIỆU ====================
 
-    private static final List<HoaDonMau> HOA_DON =
+    private final List<HoaDonView> HOA_DON =
             new ArrayList<>();
 
-    private static final List<PhieuMau> PHIEU =
+    private final List<PhieuView> PHIEU =
             new ArrayList<>();
 
-    private static int maTiepTheo = 3;
+    private final DoiTraBUS bus;
 
     private final boolean laQuanLy;
 
-    private final List<PhieuMau> dangHienThi =
+    private final List<PhieuView> dangHienThi =
             new ArrayList<>();
 
     private final JTextField txtTim = new JTextField();
@@ -90,11 +94,13 @@ public class DoiTraPanel extends JPanel {
 
     // ==================== CONSTRUCTOR ====================
 
-    public DoiTraPanel(boolean laQuanLy) {
+    public DoiTraPanel(boolean laQuanLy) { this(null, laQuanLy); }
 
+    public DoiTraPanel(DoiTraBUS bus) { this(bus, bus.laQuanLy()); }
+
+    private DoiTraPanel(DoiTraBUS bus, boolean laQuanLy) {
+        this.bus = bus;
         this.laQuanLy = laQuanLy;
-
-        taoDuLieuMau();
 
         setLayout(new BorderLayout());
         setBackground(BG);
@@ -105,117 +111,7 @@ public class DoiTraPanel extends JPanel {
 
     // ==================== DỮ LIỆU MẪU ====================
 
-    private static void taoDuLieuMau() {
 
-        if (!HOA_DON.isEmpty()) {
-            return;
-        }
-
-        // Hóa đơn 1
-        HoaDonMau hd1 = new HoaDonMau(
-            "HD000001",
-            "Trần Thị Mai",
-            "0932345678",
-            LocalDate.of(2026, 10, 15)
-        );
-
-        hd1.dongs.add(new DongHoaDon(
-            "CT01",
-            "Samsung Crystal UHD",
-            1,
-            11610000
-        ));
-
-        HOA_DON.add(hd1);
-
-        // Hóa đơn 2
-        HoaDonMau hd2 = new HoaDonMau(
-            "HD000002",
-            "Lê Hoàng Nam",
-            "0383456789",
-            LocalDate.of(2026, 10, 16)
-        );
-
-        hd2.dongs.add(new DongHoaDon(
-            "CT02A",
-            "Tai nghe Bluetooth - Mới",
-            1,
-            1250000
-        ));
-
-        hd2.dongs.add(new DongHoaDon(
-            "CT02B",
-            "Tai nghe Bluetooth - Mới",
-            1,
-            1250000
-        ));
-
-        HOA_DON.add(hd2);
-
-        // Hóa đơn 3
-        HoaDonMau hd3 = new HoaDonMau(
-            "HD000003",
-            "Khách vãng lai",
-            "",
-            LocalDate.of(2026, 10, 7)
-        );
-
-        hd3.dongs.add(new DongHoaDon(
-            "CT03",
-            "Tủ lạnh Panasonic",
-            1,
-            9015500
-        ));
-
-        HOA_DON.add(hd3);
-
-        // Hóa đơn mới để thử quy trình trong hạn 7 ngày
-        HoaDonMau hd4 = new HoaDonMau(
-            "HD000004",
-            "Nguyễn Văn An",
-            "0901234567",
-            LocalDate.now().minusDays(2)
-        );
-
-        hd4.dongs.add(new DongHoaDon(
-            "CT04",
-            "Dell Inspiron 15",
-            2,
-            22500000
-        ));
-
-        HOA_DON.add(hd4);
-
-        // Phiếu mẫu của nhân viên Trần Thị Linh
-        PhieuMau p1 = new PhieuMau("DT000001", hd2);
-
-        p1.nguoiLap = "Trần Thị Linh";
-        p1.nguoiLienHe = hd2.khach;
-        p1.sdt = hd2.sdt;
-        p1.lyDo = "Không nghe được một bên";
-        p1.hienTrang = "Hoạt động kém";
-        p1.phuKien = "Không có";
-        p1.huongXuLy = "Trả hàng & hoàn tiền";
-
-        p1.chiTiet.add(new DongTra(hd2.dongs.get(0), 1));
-
-        PHIEU.add(p1);
-
-        // Phiếu mẫu thứ hai để quản lý xét duyệt
-        PhieuMau p2 = new PhieuMau("DT000002", hd2);
-
-        p2.nguoiLap = "Nguyễn Văn A";
-        p2.nguoiLienHe = hd2.khach;
-        p2.sdt = hd2.sdt;
-        p2.lyDo = "Không nghe được một bên";
-        p2.hienTrang = "Hoạt động kém";
-        p2.phuKien = "Không có";
-        p2.huongXuLy = "Trả hàng & hoàn tiền";
-
-        p2.chiTiet.add(new DongTra(hd2.dongs.get(1), 1));
-
-        PHIEU.add(p2);
-    }
 
     // ==================== DANH SÁCH PHIẾU ====================
 
@@ -254,7 +150,7 @@ public class DoiTraPanel extends JPanel {
 
         heading.add(title, BorderLayout.WEST);
 
-        if (!laQuanLy) {
+        {
 
             JButton btn = button(
                 "+  Tiếp nhận đổi / trả", true
@@ -543,7 +439,14 @@ public class DoiTraPanel extends JPanel {
 
     // ==================== TẢI DANH SÁCH ====================
 
+    public void lamMoi() { taiDanhSach(); }
+
     private void taiDanhSach() {
+        PHIEU.clear();
+        if (bus != null) {
+            try { for (var f : bus.danhSach()) PHIEU.add(view(f)); }
+            catch (RuntimeException ex) { thongBao(ex.getMessage()); return; }
+        }
 
         String q = txtTim.getText()
                 .trim()
@@ -558,13 +461,8 @@ public class DoiTraPanel extends JPanel {
 
         int[] dem = new int[4];
 
-        for (PhieuMau p : PHIEU) {
+        for (PhieuView p : PHIEU) {
 
-            // Nhân viên demo chỉ xem phiếu của Trần Thị Linh
-            if (!laQuanLy
-                    && !p.nguoiLap.equals("Trần Thị Linh")) {
-                continue;
-            }
 
             int idx = Arrays.asList(
                 "Chờ duyệt",
@@ -621,6 +519,10 @@ public class DoiTraPanel extends JPanel {
     // ==================== TRA CỨU HÓA ĐƠN ====================
 
     private void moTraCuu() {
+        if (bus == null) { thongBao("Hãy đăng nhập để dùng chức năng đổi/trả có kết nối CSDL."); return; }
+        HOA_DON.clear();
+        try { for (var hd : bus.traCuuHoaDon()) HOA_DON.add(view(hd)); }
+        catch (RuntimeException ex) { thongBao(ex.getMessage()); return; }
 
         JDialog dialog = taoDialog(
             "Tra cứu giao dịch mua hàng", 850, 615
@@ -686,7 +588,7 @@ public class DoiTraPanel extends JPanel {
                     .trim()
                     .toLowerCase(Locale.ROOT);
 
-            for (HoaDonMau hd : HOA_DON) {
+            for (HoaDonView hd : HOA_DON) {
 
                 String hay = (
                     hd.ma + " "
@@ -801,12 +703,9 @@ public class DoiTraPanel extends JPanel {
     // ==================== TIẾP NHẬN / SỬA ====================
 
     private void moTiepNhan(
-            HoaDonMau hd,
-            PhieuMau phieuCu) {
+            HoaDonView hd,
+            PhieuView phieuCu) {
 
-        if (laQuanLy) {
-            return;
-        }
 
         // Chỉ kiểm tra hạn khi tạo yêu cầu mới
         if (phieuCu == null && !trong7Ngay(hd.ngay)) {
@@ -846,7 +745,7 @@ public class DoiTraPanel extends JPanel {
 
         addRow(fields, notice(
             "Hóa đơn gốc được giữ nguyên. "
-            + "Chọn đơn vị hàng cần đổi/trả."
+            + "Đổi/trả toàn bộ hóa đơn, không xử lý từng phần."
         ), 53);
 
         // Danh sách sản phẩm có thể đổi/trả
@@ -857,7 +756,7 @@ public class DoiTraPanel extends JPanel {
         for (DongHoaDon d : hd.dongs) {
 
             int available =
-                d.soLuong - daYeuCau(d, phieuCu);
+                d.soLuong;
 
             if (available <= 0) {
                 continue;
@@ -877,18 +776,19 @@ public class DoiTraPanel extends JPanel {
             ));
 
             JCheckBox cb = new JCheckBox(
-                d.ten + " · " + tien(d.giaThucTra)
+                d.ten + " · Thực trả dòng " + tien(d.thanhTien)
             );
 
             cb.setOpaque(false);
             cb.setForeground(TEXT);
-            cb.setSelected(oldQty > 0);
+            cb.setSelected(true);
+            cb.setEnabled(false);
 
             line.add(cb, BorderLayout.CENTER);
 
             JSpinner qty = new JSpinner(
                 new SpinnerNumberModel(
-                    oldQty > 0 ? oldQty : 1,
+                    available,
                     1,
                     available,
                     1
@@ -899,7 +799,7 @@ public class DoiTraPanel extends JPanel {
                 new Dimension(63, 28)
             );
 
-            qty.setEnabled(cb.isSelected());
+            qty.setEnabled(false);
 
             cb.addActionListener(e ->
                 qty.setEnabled(cb.isSelected())
@@ -1022,6 +922,18 @@ public class DoiTraPanel extends JPanel {
             + "Chưa hoàn tiền, cập nhật hàng hay điểm."
         ), 57);
 
+        JCheckBox loiKyThuat = new JCheckBox("Lỗi kỹ thuật không do khách hàng gây ra");
+        JCheckBox nguyenVen = new JCheckBox("Sản phẩm còn nguyên vẹn");
+        JCheckBox duPhuKien = new JCheckBox("Đầy đủ phụ kiện");
+        for (JCheckBox c : new JCheckBox[]{loiKyThuat, nguyenVen, duPhuKien}) {
+            c.setOpaque(false); c.setForeground(TEXT); addRow(fields, c, 30);
+        }
+        if (phieuCu != null) {
+            loiKyThuat.setSelected(phieuCu.hoSo.yeuCau().loiKyThuat());
+            nguyenVen.setSelected(phieuCu.hoSo.yeuCau().nguyenVen());
+            duPhuKien.setSelected(phieuCu.hoSo.yeuCau().duPhuKien());
+        }
+
         // Cập nhật tiền hoàn khi thay đổi sản phẩm
         Runnable capNhatTien = () -> {
 
@@ -1033,8 +945,7 @@ public class DoiTraPanel extends JPanel {
 
                     if (checks.get(i).isSelected()) {
 
-                        value += options.get(i).giaThucTra
-                            * (Integer) spinners.get(i).getValue();
+                        value += options.get(i).thanhTien;
                     }
                 }
             }
@@ -1120,48 +1031,14 @@ public class DoiTraPanel extends JPanel {
                 return;
             }
 
-            PhieuMau p = phieuCu;
-
-            if (p == null) {
-
-                p = new PhieuMau(
-                    String.format(
-                        "DT%06d",
-                        maTiepTheo++
-                    ),
-                    hd
-                );
-
-                // Tài khoản demo
-                p.nguoiLap = "Trần Thị Linh";
-
-                PHIEU.add(p);
-            }
-
-            p.chiTiet.clear();
-            p.chiTiet.addAll(chiTiet);
-
-            p.nguoiLienHe = tenLienHe;
-            p.sdt = soDienThoai;
-
-            p.lyDo = lyDo.getText().trim();
-            p.hienTrang = hienTrang.getText().trim();
-            p.phuKien = phuKien.getText().trim();
-
-            p.huongXuLy =
-                String.valueOf(huong.getSelectedItem());
-
-            p.trangThai = "Chờ duyệt";
-            p.nguoiDuyet = "";
-
-            taiDanhSach();
-
-            dialog.dispose();
-
-            thongBao(
-                "Đã gửi phiếu " + p.ma
-                + " (demo). Chưa phát sinh hoàn tiền thật."
-            );
+            try {
+                String ma = bus.guiYeuCau(new YeuCau(hd.ma, tenLienHe, soDienThoai,
+                    lyDo.getText(), hienTrang.getText(), phuKien.getText(),
+                    huong.getSelectedIndex() == 1, loiKyThuat.isSelected(),
+                    nguyenVen.isSelected(), duPhuKien.isSelected()), phieuCu == null ? null : phieuCu.ma);
+                taiDanhSach(); dialog.dispose();
+                thongBao("Đã lưu phiếu " + ma + " và gửi quản lý duyệt.");
+            } catch (RuntimeException ex) { thongBao(ex.getMessage()); }
         });
 
         footer.add(cancel);
@@ -1175,7 +1052,7 @@ public class DoiTraPanel extends JPanel {
 
     // ==================== CHI TIẾT PHIẾU ====================
 
-    private void moChiTiet(PhieuMau p) {
+    private void moChiTiet(PhieuView p) {
 
         JDialog dialog = taoDialog(
             "Phiếu " + p.ma,
@@ -1295,8 +1172,8 @@ public class DoiTraPanel extends JPanel {
             addRow(details, info(
                 ct.dong.ten,
                 "Số lượng " + ct.soLuong
-                    + " · Đơn giá thực trả "
-                    + tien(ct.dong.giaThucTra)
+                    + " · Tiền thực trả dòng "
+                    + tien(ct.dong.thanhTien)
             ), 63);
         }
 
@@ -1317,24 +1194,16 @@ public class DoiTraPanel extends JPanel {
 
         // Tiền hoàn
         addRow(details, info(
-            "Tiền hoàn dự kiến",
+            p.trangThai.equals("Hoàn tất") ? "Tiền hoàn đã ghi nhận" : "Tiền hoàn dự kiến",
             tien(p.tienHoan())
         ), 63);
 
-        String diemDuKien =
-            p.huongXuLy.startsWith("Trả")
-                ? "−" + p.diemThuHoiDuKien() + " điểm"
-                : "0 điểm";
-
-        addRow(details, info(
-            "Điểm điều chỉnh dự kiến (demo)",
-            diemDuKien
-        ), 63);
-
-        addRow(details, notice(
-            "Mọi số liệu hoàn tiền/điểm chỉ là dự kiến. "
-            + "Chưa cập nhật CSDL."
-        ), 57);
+        int delta = p.huongXuLy.startsWith("Trả") && p.hoaDon.goc.maKH() != null
+            ? p.hoaDon.goc.diemDung() - p.hoaDon.goc.diemCong() : 0;
+        addRow(details, info("Điểm điều chỉnh khi hoàn tất", (delta >= 0 ? "+" : "") + delta + " điểm"), 63);
+        if (p.hoSo.lyDoTuChoi() != null) addRow(details, info("Lý do từ chối", p.hoSo.lyDoTuChoi()), 58);
+        if (!p.hoSo.sanPhamDoi().isEmpty()) addRow(details, info("Mã hàng giao đổi", p.hoSo.sanPhamDoi().toString()), 58);
+        addRow(details, notice("Chỉ khi hoàn tất mới ghi nhận hàng, tiền hoàn và điểm. Hóa đơn gốc được giữ nguyên."), 57);
 
         // Scroll
         JScrollPane scroll = new JScrollPane(details);
@@ -1375,8 +1244,7 @@ public class DoiTraPanel extends JPanel {
             footer.add(reject);
             footer.add(approve);
 
-        } else if (!laQuanLy
-                && (p.trangThai.equals("Chờ duyệt")
+        } else if ((p.trangThai.equals("Chờ duyệt")
                     || p.trangThai.equals("Từ chối"))) {
 
             // Nhân viên sửa và gửi lại
@@ -1392,34 +1260,10 @@ public class DoiTraPanel extends JPanel {
 
             footer.add(edit);
 
-        } else if (!laQuanLy
-                && p.trangThai.equals("Đã duyệt")) {
+        } else if (p.trangThai.equals("Đã duyệt")) {
 
-            // Chỉ mô phỏng hoàn tất, chưa xử lý tiền/hàng.
-            JButton done = button(
-                "Hoàn tất (demo)",
-                true
-            );
-
-            done.addActionListener(e -> {
-
-                int ok = JOptionPane.showConfirmDialog(
-                    dialog,
-                    "Chỉ đổi trạng thái demo; "
-                    + "không chuyển tiền hay nhập hàng thật. "
-                    + "Tiếp tục?",
-                    "Xác nhận",
-                    JOptionPane.YES_NO_OPTION
-                );
-
-                if (ok == JOptionPane.YES_OPTION) {
-
-                    p.trangThai = "Hoàn tất";
-
-                    taiDanhSach();
-                    dialog.dispose();
-                }
-            });
+            JButton done = button("Hoàn tất đổi / trả", true);
+            done.addActionListener(e -> moHoanTat(dialog, p));
 
             footer.add(done);
         }
@@ -1434,13 +1278,13 @@ public class DoiTraPanel extends JPanel {
 
     private void thayDoiTrangThai(
             JDialog dialog,
-            PhieuMau p,
+            PhieuView p,
             String status) {
 
         int answer = JOptionPane.showConfirmDialog(
             dialog,
             "Chuyển phiếu " + p.ma
-                + " sang '" + status + "' (demo)?",
+                + " sang '" + status + "'?",
             "Xác nhận",
             JOptionPane.YES_NO_OPTION
         );
@@ -1449,41 +1293,73 @@ public class DoiTraPanel extends JPanel {
             return;
         }
 
-        p.trangThai = status;
+        try {
+            boolean duyet = "Đã duyệt".equals(status);
+            String reason = duyet ? null : JOptionPane.showInputDialog(dialog, "Nhập lý do từ chối:");
+            if (!duyet && reason == null) return;
+            bus.xetDuyet(p.ma, duyet, reason);
+            taiDanhSach(); dialog.dispose();
+            thongBao("Đã lưu kết quả xét duyệt.");
+        } catch (RuntimeException ex) { thongBao(ex.getMessage()); }
+    }
 
-        // Tài khoản quản lý demo
-        p.nguoiDuyet = "Trần Minh Quân";
+    private void moHoanTat(JDialog parent, PhieuView p) {
+        JPanel form = vertical();
+        JComboBox<String> nhapKho = new JComboBox<>(new String[]{"Nhập hàng lỗi / chưa sẵn bán", "Đủ điều kiện bán tiếp"});
+        JComboBox<String> phuongThuc = new JComboBox<>(new String[]{"Tiền mặt", "Chuyển khoản"});
+        form.add(field("Phân loại hàng nhận lại", nhapKho));
+        boolean doi = p.hoSo.yeuCau().doiHang();
+        if (!doi) form.add(field("Phương thức hoàn " + tien(p.tienHoan()), phuongThuc));
+        Map<String,JComboBox<SanPhamDoi>> chon = new LinkedHashMap<>();
+        if (doi) {
+            List<SanPhamDoi> ds;
+            try { ds = bus.sanPhamDoi(); }
+            catch (RuntimeException ex) { thongBao(ex.getMessage()); return; }
+            for (var d : p.hoaDon.goc.dongs()) {
+                var goc = ds.stream().filter(sp -> sp.maSP().equals(d.maSP())).findFirst().orElse(null);
+                if (goc == null) { thongBao("Không tìm thấy mã sản phẩm gốc."); return; }
+                List<SanPhamDoi> phuHop = ds.stream().filter(sp -> sp.khaDung() >= d.soLuong()
+                    && (sp.maSP().equals(d.maSP()) || (sp.danhMuc().equals(goc.danhMuc()) && sp.gia() == d.donGia())))
+                    .sorted(java.util.Comparator.comparing(sp -> !sp.maSP().equals(d.maSP()))).toList();
+                JComboBox<SanPhamDoi> combo = new JComboBox<>(phuHop.toArray(new SanPhamDoi[0]));
+                chon.put(d.maSP(), combo);
+                form.add(field("Đổi " + d.soLuong() + " × " + d.tenSP() + " sang:", combo));
+            }
+        }
+        JCheckBox xacNhan = new JCheckBox(doi ? "Đã nhận đủ hàng gốc và giao đủ hàng đổi" : "Đã nhận đủ hàng và hoàn tiền cho khách");
+        xacNhan.setOpaque(false); xacNhan.setForeground(TEXT); form.add(xacNhan);
+        JScrollPane scroll = new JScrollPane(form); scroll.setPreferredSize(new Dimension(650, 330));
+        while (JOptionPane.showConfirmDialog(parent, scroll, "Xác nhận hoàn tất đổi / trả", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE) == JOptionPane.OK_OPTION) {
+            try {
+                Map<String,String> mapping = new LinkedHashMap<>();
+                for (var e : chon.entrySet()) {
+                    SanPhamDoi sp = (SanPhamDoi)e.getValue().getSelectedItem();
+                    if (sp == null) throw new IllegalArgumentException("Không có hàng tương đương sẵn bán; cần bổ sung tồn trước khi hoàn tất.");
+                    mapping.put(e.getKey(), sp.maSP());
+                }
+                bus.hoanTat(new HoanTat(p.ma, nhapKho.getSelectedIndex() == 1,
+                    phuongThuc.getSelectedIndex() == 0 ? "TienMat" : "ChuyenKhoan", xacNhan.isSelected(), mapping));
+                taiDanhSach(); parent.dispose(); thongBao("Đã hoàn tất và lưu hàng/tiền/điểm vào CSDL."); return;
+            } catch (RuntimeException ex) { thongBao(ex.getMessage()); }
+        }
+    }
 
-        taiDanhSach();
-        dialog.dispose();
-
-        thongBao(
-            "Đã " + status.toLowerCase(Locale.ROOT)
-                + " phiếu (demo). Chưa hoàn tiền thật."
-        );
+    private static HoaDonView view(HoaDonGoc h) {
+        HoaDonView v = new HoaDonView(h.maHD(),h.tenKH(),h.sdt(),h.ngay().toLocalDate()); v.goc=h;
+        for(var d:h.dongs()) v.dongs.add(new DongHoaDon(d.maSP(),d.tenSP(),d.soLuong(),d.thucThu()));
+        return v;
+    }
+    private static PhieuView view(Phieu f) {
+        PhieuView v=new PhieuView(f.ma(),view(f.hoaDon()));v.hoSo=f;v.ngayLap=f.entity().getNgayLap();
+        v.nguoiLap=f.tenNguoiLap();v.nguoiDuyet=f.maNVDuyet()==null?"":f.maNVDuyet();
+        var y=f.yeuCau();v.nguoiLienHe=y.lienHe();v.sdt=y.sdt();v.lyDo=y.lyDo();
+        v.hienTrang=y.hienTrang();v.phuKien=y.phuKien();v.huongXuLy=y.doiHang()?"Đổi sản phẩm tương đương":"Trả hàng & hoàn tiền";
+        v.trangThai=f.trangThai();for(var d:v.hoaDon.dongs)v.chiTiet.add(new DongTra(d,d.soLuong));return v;
     }
 
     // ==================== KIỂM TRA SỐ LƯỢNG ====================
 
-    private static int daYeuCau(
-            DongHoaDon line,
-            PhieuMau dangSua) {
 
-        int reserved = 0;
-
-        for (PhieuMau p : PHIEU) {
-
-            if (p == dangSua
-                    || p.trangThai.equals("Từ chối")) {
-
-                continue;
-            }
-
-            reserved += p.soLuongCua(line);
-        }
-
-        return reserved;
-    }
 
     // ==================== KIỂM TRA 7 NGÀY ====================
 
@@ -1904,14 +1780,15 @@ public class DoiTraPanel extends JPanel {
         JOptionPane.showMessageDialog(
             this,
             message,
-            "Green Home - Dữ liệu demo",
+            "Green Home - Đổi / trả",
             JOptionPane.INFORMATION_MESSAGE
         );
     }
 
     // ==================== LỚP DỮ LIỆU TẠM ====================
 
-    private static class HoaDonMau {
+    private static class HoaDonView {
+        HoaDonGoc goc;
 
         final String ma;
         final String khach;
@@ -1921,7 +1798,7 @@ public class DoiTraPanel extends JPanel {
         final List<DongHoaDon> dongs =
                 new ArrayList<>();
 
-        HoaDonMau(
+        HoaDonView(
                 String ma,
                 String khach,
                 String sdt,
@@ -1938,7 +1815,7 @@ public class DoiTraPanel extends JPanel {
             long sum = 0;
 
             for (DongHoaDon d : dongs) {
-                sum += d.giaThucTra * d.soLuong;
+                sum += d.thanhTien;
             }
 
             return sum;
@@ -1950,18 +1827,18 @@ public class DoiTraPanel extends JPanel {
         final String ma;
         final String ten;
         final int soLuong;
-        final long giaThucTra;
+        final long thanhTien;
 
         DongHoaDon(
                 String ma,
                 String ten,
                 int soLuong,
-                long giaThucTra) {
+                long thanhTien) {
 
             this.ma = ma;
             this.ten = ten;
             this.soLuong = soLuong;
-            this.giaThucTra = giaThucTra;
+            this.thanhTien = thanhTien;
         }
     }
 
@@ -1977,12 +1854,13 @@ public class DoiTraPanel extends JPanel {
         }
     }
 
-    private static class PhieuMau {
+    private static class PhieuView {
+        Phieu hoSo;
 
         final String ma;
-        final HoaDonMau hoaDon;
+        final HoaDonView hoaDon;
 
-        final LocalDateTime ngayLap =
+        LocalDateTime ngayLap =
                 LocalDateTime.now();
 
         String nguoiLap = "";
@@ -2002,9 +1880,9 @@ public class DoiTraPanel extends JPanel {
         final List<DongTra> chiTiet =
                 new ArrayList<>();
 
-        PhieuMau(
+        PhieuView(
                 String ma,
-                HoaDonMau hoaDon) {
+                HoaDonView hoaDon) {
 
             this.ma = ma;
             this.hoaDon = hoaDon;
@@ -2045,17 +1923,13 @@ public class DoiTraPanel extends JPanel {
 
             for (DongTra d : chiTiet) {
 
-                sum += d.dong.giaThucTra * d.soLuong;
+                sum += d.dong.thanhTien;
             }
 
             return sum;
         }
 
-        long diemThuHoiDuKien() {
 
-            // Công thức minh họa, không phải quy định thật
-            return Math.round(tienHoan() / 100000.0);
-        }
     }
 
     // ==================== CHẠY THỬ ====================
@@ -2065,7 +1939,7 @@ public class DoiTraPanel extends JPanel {
         SwingUtilities.invokeLater(() -> {
 
             JFrame frame = new JFrame(
-                "Green Home - Đổi / trả (demo)"
+                "Green Home - Đổi / trả "
             );
 
             frame.setDefaultCloseOperation(

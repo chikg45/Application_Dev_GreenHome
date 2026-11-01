@@ -102,6 +102,7 @@ public class ThongKePanel extends JPanel {
 
     private LocalDate tuNgay;
     private LocalDate denNgay;
+    private boolean daTaiDuLieu;
 
     // ==================== CONSTRUCTOR ====================
 
@@ -127,7 +128,10 @@ public class ThongKePanel extends JPanel {
 
     // ==================== TẢI DỮ LIỆU SQL SERVER ====================
 
+    public void lamMoi() { apDungThoiGian(); }
+
     private void taiDuLieuTuCSDL() {
+        daTaiDuLieu = false;
         try {
             ThongKeBUS bus = new ThongKeBUS(
                 new ThongKeDAO(new ConnectDB())
@@ -143,15 +147,16 @@ public class ThongKePanel extends JPanel {
             for (ThongKeDAO.HoaDonThongKe h : dsHoaDon) {
                 hoaDons.add(new HoaDon(
                     h.maHD, h.ngay, h.maKH, h.khachHang,
-                    h.sanPham, h.soLuong, h.thanhTien
+                    h.maSP, h.sanPham, h.soLuong, h.thanhTien
                 ));
             }
 
             for (ThongKeDAO.PhieuTraThongKe p : dsPhieu) {
                 phieuTras.add(new PhieuTra(
-                    p.maPhieu, p.maHD, p.ngay, p.trangThai, p.tienHoan
+                    p.maPhieu, p.maHD, p.maKH, p.khachHang, p.ngay, p.trangThai, p.tienHoan
                 ));
             }
+            daTaiDuLieu = true;
         } catch (RuntimeException ex) {
             hoaDons.clear();
             phieuTras.clear();
@@ -642,30 +647,21 @@ public class ThongKePanel extends JPanel {
 
             Set<String> loai = new HashSet<>();
             Set<String> maHoaDon = new HashSet<>();
-
-            Map<String, Long> quantities =
-                new LinkedHashMap<>();
-
+            Map<String,Long> quantities = new LinkedHashMap<>();
+            Map<String,Long> revenues = new HashMap<>();
+            Map<String,String> names = new HashMap<>();
+            Map<String,Set<String>> invoices = new HashMap<>();
             for (HoaDon h : filtered) {
-
-                loai.add(h.sanPham);
-                maHoaDon.add(h.ma);
-
-                quantities.merge(
-                    h.sanPham,
-                    (long) h.soLuong,
-                    Long::sum
-                );
-
-                rows.add(new String[] {
-                    h.sanPham,
-                    String.valueOf(h.soLuong),
-                    tien(h.tien),
-                    h.ma
-                });
+                loai.add(h.maSP); maHoaDon.add(h.ma);
+                quantities.merge(h.maSP, (long)h.soLuong, Long::sum);
+                revenues.merge(h.maSP,h.tien,Long::sum); names.putIfAbsent(h.maSP,h.sanPham);
+                invoices.computeIfAbsent(h.maSP,k->new HashSet<>()).add(h.ma);
             }
-
-            bars.putAll(quantities);
+            quantities.entrySet().stream().sorted(Map.Entry.<String,Long>comparingByValue().reversed().thenComparing(Map.Entry.comparingByKey())).forEach(e->{
+                String id=e.getKey(), ten=id+" · "+names.get(id);
+                bars.put(ten,e.getValue());
+                rows.add(new String[]{ten,String.valueOf(e.getValue()),tien(revenues.get(id)),String.valueOf(invoices.get(id).size())});
+            });
 
             themKpi(
                 "Mẫu hàng đã bán",
@@ -719,15 +715,6 @@ public class ThongKePanel extends JPanel {
             Map<String, Integer> soHoaDonTheoKH = new LinkedHashMap<>();
             Map<String, Long> chiTieuTheoKH = new LinkedHashMap<>();
             Map<String, String> tenTheoKH = new LinkedHashMap<>();
-            Map<String, Long> tienHoanTheoHD = new HashMap<>();
-
-            // Chỉ tiền hoàn của phiếu Hoàn tất mới được khấu trừ.
-            for (PhieuTra p : phieuTras) {
-                if (trongKhoang(p.ngay) && "Hoàn tất".equals(p.trangThai)) {
-                    tienHoanTheoHD.merge(p.maHD, p.tienHoan, Long::sum);
-                }
-            }
-
             for (HoaDon h : filtered) {
                 tongTheoHoaDon.merge(h.ma, h.tien, Long::sum);
                 thongTinHoaDon.putIfAbsent(h.ma, h);
@@ -744,17 +731,23 @@ public class ThongKePanel extends JPanel {
                     continue; // Không cộng khách vãng lai vào chi tiêu thành viên.
                 }
 
-                long tienHoan = tienHoanTheoHD.getOrDefault(h.ma, 0L);
-                long chiTieuThucTe = Math.max(0L, entry.getValue() - tienHoan);
+                long chiTieuThucTe = entry.getValue();
                 chiTieuTheoKH.merge(h.maKH, chiTieuThucTe, Long::sum);
                 soHoaDonTheoKH.merge(h.maKH, 1, Integer::sum);
                 tenTheoKH.putIfAbsent(h.maKH, h.khach);
             }
 
+            for (PhieuTra p : phieuTras) {
+                if (trongKhoang(p.ngay) && "Hoàn tất".equals(p.trangThai) && p.maKH != null && !p.maKH.isBlank()) {
+                    members.add(p.maKH); tenTheoKH.putIfAbsent(p.maKH,p.khach);
+                    chiTieuTheoKH.merge(p.maKH,-p.tienHoan,Long::sum);
+                }
+            }
+
             for (String maKH : members) {
                 String ten = tenTheoKH.getOrDefault(maKH, maKH);
                 long chiTieu = chiTieuTheoKH.getOrDefault(maKH, 0L);
-                bars.put(ten, chiTieu);
+                bars.put(maKH+" · "+ten, chiTieu);
                 rows.add(new String[] {
                     maKH,
                     ten,
@@ -766,7 +759,7 @@ public class ThongKePanel extends JPanel {
             themKpi(
                 "Khách thành viên",
                 String.valueOf(members.size()),
-                "Có hóa đơn trong kỳ",
+                "Có mua hoặc hoàn tiền trong kỳ",
                 BLUE
             );
 
@@ -884,9 +877,9 @@ public class ThongKePanel extends JPanel {
 
             cols = new String[] {
                 "Mã phiếu",
-                "Ngày lập",
+                "Ngày ghi nhận",
                 "Trạng thái",
-                "Tiền hoàn dự kiến"
+                "Tiền hoàn đã ghi nhận"
             };
         }
 
@@ -898,6 +891,8 @@ public class ThongKePanel extends JPanel {
             + " đến "
             + DATE.format(denNgay)
         );
+
+        if (!daTaiDuLieu) lblMoTa.setText("Chưa tải được dữ liệu SQL Server; các số 0 chưa phải kết quả báo cáo.");
 
         model.setColumnIdentifiers(cols);
         model.setRowCount(0);
@@ -1282,11 +1277,10 @@ public class ThongKePanel extends JPanel {
                 return;
             }
 
-            long max = 1;
-
-            for (long v : data.values()) {
-                max = Math.max(max, v);
-            }
+            long max = 1, min = 0;
+            for (long v : data.values()) { max = Math.max(max, v); min = Math.min(min, v); }
+            double range = (double)max - min;
+            int zeroY = bottom - (int)((0.0-min)/range*(bottom-top));
 
             g2.setFont(new Font(
                 "SansSerif", Font.PLAIN, 10
@@ -1314,17 +1308,17 @@ public class ThongKePanel extends JPanel {
                     tick = String.format(
                         Locale.US,
                         "%.1f tr",
-                        (max * i / 4.0) / 1_000_000
+                        (min + range * i / 4.0) / 1_000_000
                     );
 
                 } else {
 
                     tick = String.valueOf(
-                        Math.round(max * i / 4.0)
+                        Math.round(min + range * i / 4.0)
                     );
                 }
 
-                if (i == 0) {
+                if (i == 0 && min == 0) {
                     tick = "0";
                 }
 
@@ -1360,8 +1354,8 @@ public class ThongKePanel extends JPanel {
                     );
 
                     int height = (int) (
-                        entry.getValue()
-                        * 1.0 / max
+                        Math.abs((double)entry.getValue())
+                        / range
                         * (bottom - top)
                     );
 
@@ -1374,13 +1368,13 @@ public class ThongKePanel extends JPanel {
                         )
                     );
 
-                    g2.setColor(BLUE);
+                    g2.setColor(entry.getValue() < 0 ? RED : BLUE);
 
                     if (height > 0) {
 
                         g2.fillRoundRect(
                             cx - barWidth / 2,
-                            bottom - height,
+                            entry.getValue() >= 0 ? zeroY - height : zeroY,
                             barWidth,
                             height,
                             5,
@@ -1425,6 +1419,7 @@ public class ThongKePanel extends JPanel {
         final String maKH;
         final String khach;
         final String sanPham;
+        final String maSP;
 
         final LocalDate ngay;
 
@@ -1436,6 +1431,7 @@ public class ThongKePanel extends JPanel {
                 LocalDate ngay,
                 String maKH,
                 String khach,
+                String maSP,
                 String sanPham,
                 int soLuong,
                 long tien) {
@@ -1445,6 +1441,7 @@ public class ThongKePanel extends JPanel {
             this.maKH = maKH;
             this.khach = khach;
             this.sanPham = sanPham;
+            this.maSP = maSP;
             this.soLuong = soLuong;
             this.tien = tien;
         }
@@ -1456,6 +1453,7 @@ public class ThongKePanel extends JPanel {
 
         final String ma;
         final String maHD;
+        final String maKH, khach;
         final String trangThai;
 
         final LocalDate ngay;
@@ -1464,12 +1462,15 @@ public class ThongKePanel extends JPanel {
         PhieuTra(
                 String ma,
                 String maHD,
+                String maKH,
+                String khach,
                 LocalDate ngay,
                 String trangThai,
                 long tienHoan) {
 
             this.ma = ma;
             this.maHD = maHD;
+            this.maKH=maKH; this.khach=khach;
             this.ngay = ngay;
             this.trangThai = trangThai;
             this.tienHoan = tienHoan;
@@ -1479,26 +1480,6 @@ public class ThongKePanel extends JPanel {
     // ==================== CHẠY THỬ ====================
 
     public static void main(String[] args) {
-
-        SwingUtilities.invokeLater(() -> {
-
-            JFrame frame = new JFrame(
-                "Green Home - Báo cáo & thống kê"
-            );
-
-            frame.setDefaultCloseOperation(
-                JFrame.EXIT_ON_CLOSE
-            );
-
-            frame.setSize(1200, 760);
-
-            frame.setLocationRelativeTo(null);
-
-            frame.setContentPane(
-                new ThongKePanel()
-            );
-
-            frame.setVisible(true);
-        });
+        SwingUtilities.invokeLater(() -> new LoginFrame().setVisible(true));
     }
 }

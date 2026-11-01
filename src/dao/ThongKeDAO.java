@@ -26,7 +26,7 @@ public class ThongKeDAO {
     public List<HoaDonThongKe> layChiTietHoaDon(LocalDate tuNgay, LocalDate denNgay) {
         String sql = "SELECT hd.maHD, hd.ngayLap, hd.maKH, "
             + "COALESCE(NULLIF(LTRIM(RTRIM(hd.tenKhachHangLucBan)), N''), N'Khách vãng lai') AS tenKhach, "
-            + "ct.tenSP, ct.soLuong, "
+            + "ct.maSP, ct.tenSP, ct.soLuong, "
             + "(ct.giaChuaThue + ct.tienVAT - ct.soTienGiam) AS thanhTien "
             + "FROM dbo.HOA_DON hd "
             + "INNER JOIN dbo.DON_HANG dh ON dh.maDH = hd.maDH "
@@ -47,6 +47,7 @@ public class ThongKeDAO {
                         h.ngay = rs.getTimestamp("ngayLap").toLocalDateTime().toLocalDate();
                         h.maKH = rs.getString("maKH");
                         h.khachHang = rs.getString("tenKhach");
+                        h.maSP = rs.getString("maSP");
                         h.sanPham = rs.getString("tenSP");
                         h.soLuong = rs.getInt("soLuong");
                         h.thanhTien = tien(rs.getBigDecimal("thanhTien"));
@@ -60,14 +61,14 @@ public class ThongKeDAO {
 
     /** Tiền hoàn lấy từ thanhTienHoan; NULL được xem là chưa ghi nhận tiền hoàn. */
     public List<PhieuTraThongKe> layPhieuDoiTra(LocalDate tuNgay, LocalDate denNgay) {
-        String sql = "SELECT p.maPhieuDoiTra, p.maHD, p.ngayLap, p.trangThaiDuyet, "
-            + "COALESCE(SUM(ct.thanhTienHoan), 0) AS tienHoan "
-            + "FROM dbo.PHIEU_DOI_TRA p "
-            + "LEFT JOIN dbo.CHI_TIET_PHIEU_DOI_TRA ct "
-            + "ON ct.maPhieuDoiTra = p.maPhieuDoiTra AND ct.maHD = p.maHD "
-            + "WHERE p.ngayLap >= ? AND p.ngayLap < DATEADD(day, 1, ?) "
-            + "GROUP BY p.maPhieuDoiTra, p.maHD, p.ngayLap, p.trangThaiDuyet "
-            + "ORDER BY p.ngayLap DESC, p.maPhieuDoiTra";
+        String ngay = "CASE WHEN p.trangThaiDuyet='HoanTat' THEN COALESCE(p.ngayHoanTat,p.ngayLap) ELSE p.ngayLap END";
+        String sql = "SELECT p.maPhieuDoiTra,p.maHD," + ngay + " AS ngayGhiNhan,p.trangThaiDuyet,"
+            + "h.maKH,h.tenKhachHangLucBan,COALESCE(SUM(ct.thanhTienHoan),0) AS tienHoan "
+            + "FROM dbo.PHIEU_DOI_TRA p JOIN dbo.HOA_DON h ON h.maHD=p.maHD "
+            + "LEFT JOIN dbo.CHI_TIET_PHIEU_DOI_TRA ct ON ct.maPhieuDoiTra=p.maPhieuDoiTra AND ct.maHD=p.maHD "
+            + "WHERE " + ngay + ">=? AND " + ngay + "<DATEADD(day,1,?) "
+            + "GROUP BY p.maPhieuDoiTra,p.maHD,p.ngayLap,p.ngayHoanTat,p.trangThaiDuyet,h.maKH,h.tenKhachHangLucBan "
+            + "ORDER BY ngayGhiNhan DESC,p.maPhieuDoiTra";
 
         return Jdbc.doc(nguon, c -> {
             List<PhieuTraThongKe> ds = new ArrayList<>();
@@ -79,7 +80,9 @@ public class ThongKeDAO {
                         PhieuTraThongKe p = new PhieuTraThongKe();
                         p.maPhieu = rs.getString("maPhieuDoiTra");
                         p.maHD = rs.getString("maHD");
-                        p.ngay = rs.getTimestamp("ngayLap").toLocalDateTime().toLocalDate();
+                        p.maKH = rs.getString("maKH");
+                        p.khachHang = rs.getString("tenKhachHangLucBan");
+                        p.ngay = rs.getTimestamp("ngayGhiNhan").toLocalDateTime().toLocalDate();
                         p.trangThai = doiTrangThai(rs.getString("trangThaiDuyet"));
                         p.tienHoan = tien(rs.getBigDecimal("tienHoan"));
                         ds.add(p);
@@ -91,7 +94,7 @@ public class ThongKeDAO {
     }
 
     private static long tien(BigDecimal value) {
-        return value == null ? 0L : value.longValue();
+        return value == null ? 0L : value.longValueExact();
     }
 
     private static String doiTrangThai(String status) {
@@ -106,14 +109,14 @@ public class ThongKeDAO {
     }
 
     public static class HoaDonThongKe {
-        public String maHD, maKH, khachHang, sanPham;
+        public String maHD, maKH, khachHang, maSP, sanPham;
         public LocalDate ngay;
         public int soLuong;
         public long thanhTien;
     }
 
     public static class PhieuTraThongKe {
-        public String maPhieu, maHD, trangThai;
+        public String maPhieu, maHD, maKH, khachHang, trangThai;
         public LocalDate ngay;
         public long tienHoan;
     }

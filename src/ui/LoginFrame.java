@@ -2,6 +2,8 @@
 package ui;
 
 import java.awt.*;
+import bus.DangNhapBUS;
+import java.util.concurrent.ExecutionException;
 import java.util.Arrays;
 import javax.swing.*;
 import javax.swing.border.*;
@@ -216,27 +218,35 @@ public class LoginFrame extends JFrame {
     }
 
     private void handleLogin() {
-        String username = txtUsername.getText().trim();
+        if (!btnLogin.isEnabled()) return;
+        String ten = txtUsername.getText().trim();
         char[] password = txtPassword.getPassword();
-
-        if (username.isEmpty() || password.length == 0) {
-            JOptionPane.showMessageDialog(
-                this,
-                "Vui lòng nhập tên đăng nhập và mật khẩu!",
-                "Thông báo",
-                JOptionPane.WARNING_MESSAGE
-            );
-        } else {
-            JOptionPane.showMessageDialog(
-                this,
-                "Giao diện đăng nhập đã hoạt động!\n"
-                + "Chức năng xác thực sẽ được tích hợp sau.",
-                "Green Home",
-                JOptionPane.INFORMATION_MESSAGE
-            );
+        if (ten.isEmpty() || password.length == 0) {
+            Arrays.fill(password, '\0');
+            JOptionPane.showMessageDialog(this, "Vui lòng nhập tên đăng nhập và mật khẩu."); return;
         }
-
-        Arrays.fill(password, '\0');
+        btnLogin.setEnabled(false); btnLogin.setText("Đang đăng nhập...");
+        txtPassword.setText("");
+        new SwingWorker<DangNhapBUS.PhienDangNhap, Void>() {
+            @Override protected DangNhapBUS.PhienDangNhap doInBackground() {
+                try { return new DangNhapBUS().dangNhap(ten,password); }
+                finally { Arrays.fill(password, '\0'); }
+            }
+            @Override protected void done() {
+                try {
+                    var phien = get();
+                    if (!isDisplayable()) return;
+                    MainFrame main = new MainFrame(phien.nhanVien(),phien.laQuanLy());
+                    main.setVisible(true); dispose();
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                } catch (ExecutionException ex) {
+                    JOptionPane.showMessageDialog(LoginFrame.this,ex.getCause().getMessage(),"Không thể đăng nhập",JOptionPane.ERROR_MESSAGE);
+                } catch (RuntimeException ex) {
+                    JOptionPane.showMessageDialog(LoginFrame.this,ex.getMessage(),"Không thể mở ứng dụng",JOptionPane.ERROR_MESSAGE);
+                } finally { btnLogin.setEnabled(true); btnLogin.setText("Đăng nhập  →"); }
+            }
+        }.execute();
     }
 
     // Chạy thử giao diện

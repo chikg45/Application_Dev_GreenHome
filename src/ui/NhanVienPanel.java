@@ -57,23 +57,11 @@ public class NhanVienPanel extends JPanel {
     public NhanVienPanel() {
         setLayout(new BorderLayout());
         setBackground(BG);
-        taoDuLieuMau();
         taoGiaoDien();
         taiDanhSach();
     }
 
-    private void taoDuLieuMau() {
-        nhanViens.add(new NhanVienMau("NV0001", "Nguyễn Văn A", "0901111001", "079204000001",
-                LocalDate.of(2004, 5, 3), LocalDate.of(2024, 8, 1), "Nhân viên bán hàng", "nv0001", "", true, true));
-        nhanViens.add(new NhanVienMau("NV0002", "Trần Thị Linh", "0901111002", "079204000002",
-                LocalDate.of(2004, 6, 12), LocalDate.of(2024, 8, 15), "Nhân viên bán hàng", "nv0002", "", true, true));
-        nhanViens.add(new NhanVienMau("NV0003", "Lê Hoàng Minh", "0901111003", "079204000003",
-                LocalDate.of(2004, 3, 15), LocalDate.of(2025, 1, 5), "Nhân viên bán hàng", "nv0003", "", true, true));
-        nhanViens.add(new NhanVienMau("NV0004", "Phạm Ngọc Hân", "0901111004", "079204000004",
-                LocalDate.of(2004, 11, 20), LocalDate.of(2025, 2, 10), "Nhân viên bán hàng", "nv0004", "", false, false));
-        nhanViens.add(new NhanVienMau("NV0005", "Trần Minh Quân", "0901111005", "079204000005",
-                LocalDate.of(2002, 2, 8), LocalDate.of(2023, 3, 2), "Quản lý", "quanly", "", true, true));
-    }
+
 
     private void taoGiaoDien() {
         JPanel page = new JPanel(new BorderLayout(0, 15));

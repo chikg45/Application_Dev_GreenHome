@@ -1,6 +1,7 @@
 package ui;
 
 import bus.BanHangBUS;
+import bus.DoiTraBUS;
 import entity.NhanVien;
 import java.util.Objects;
 
@@ -64,7 +65,7 @@ public class MainFrame extends JFrame {
         setLocationRelativeTo(null);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         initComponents();
-        showPage("Tổng quan");
+        showPage(banHangBUS == null ? "Tổng quan" : "Bán hàng");
     }
 
     private void moLichSuHoaDon() {
@@ -210,7 +211,8 @@ public class MainFrame extends JFrame {
 
         } else if ("Đổi / trả".equals(name)) {
 
-            cardPanel.add(new DoiTraPanel(laQuanLy), name);
+            cardPanel.add(nhanVienDangNhap == null ? new DoiTraPanel(laQuanLy)
+                : new DoiTraPanel(new DoiTraBUS(nhanVienDangNhap)), name);
 
         } else if ("Lịch làm việc".equals(name)) {
 
@@ -319,7 +321,7 @@ public class MainFrame extends JFrame {
         RoundedPanel banner = rounded(new Color(31, 39, 53), new Color(50, 68, 101), 9);
         banner.setLayout(new BorderLayout());
         banner.setBorder(new EmptyBorder(11, 15, 11, 15));
-        banner.add(label("ⓘ   Đang xem dữ liệu mẫu. Doanh thu, đơn hàng và lịch làm việc sẽ kết nối CSDL sau.",
+        banner.add(label("ⓘ   Tổng quan chưa nối CSDL. Xem số liệu thật tại mục Thống kê.",
                 11, Font.PLAIN, new Color(157, 181, 221)));
         banner.setMaximumSize(new Dimension(Integer.MAX_VALUE, 41));
         content.add(banner);
@@ -328,10 +330,10 @@ public class MainFrame extends JFrame {
         JPanel kpis = new JPanel(new GridLayout(1, 4, 12, 0));
         kpis.setOpaque(false);
         kpis.setMaximumSize(new Dimension(Integer.MAX_VALUE, 113));
-        kpis.add(stat("Tổng doanh thu", "14.110.000 đ", "Tiền bán đã thanh toán", "wallet", BLUE));
-        kpis.add(stat("Tiền hoàn / trả", "0 đ", "Hoàn tiền bán hàng", "return", RED));
-        kpis.add(stat("Doanh thu thuần", "14.110.000 đ", "Doanh thu sau hoàn trả", "chart", GREEN));
-        kpis.add(stat("Hóa đơn đã bán", "2", "Đã thanh toán", "clipboard", GOLD));
+        kpis.add(stat("Tổng doanh thu", "—", "Tiền bán đã thanh toán", "wallet", BLUE));
+        kpis.add(stat("Tiền hoàn / trả", "—", "Hoàn tiền bán hàng", "return", RED));
+        kpis.add(stat("Doanh thu thuần", "—", "Doanh thu sau hoàn trả", "chart", GREEN));
+        kpis.add(stat("Hóa đơn đã bán", "—", "Đã thanh toán", "clipboard", GOLD));
         content.add(kpis);
         content.add(Box.createVerticalStrut(14));
 
@@ -349,8 +351,8 @@ public class MainFrame extends JFrame {
 
         JPanel end = new JPanel(new BorderLayout());
         end.setOpaque(false);
-        end.add(label("Green Home · Giao diện mô phỏng", 10, Font.PLAIN, MUTED), BorderLayout.WEST);
-        end.add(label("Dữ liệu chưa đồng bộ từ SQL Server", 10, Font.PLAIN, MUTED), BorderLayout.EAST);
+        end.add(label("Green Home · Tổng quan", 10, Font.PLAIN, MUTED), BorderLayout.WEST);
+        end.add(label("Tổng quan chưa kết nối SQL Server", 10, Font.PLAIN, MUTED), BorderLayout.EAST);
         end.setMaximumSize(new Dimension(Integer.MAX_VALUE, 20));
         content.add(end);
 
@@ -428,12 +430,12 @@ public class MainFrame extends JFrame {
         RoundedPanel card = section("Cần xử lý", "Công việc đang chờ", "Xem tất cả", () -> showPage("Đổi / trả"));
         JPanel list = vertical();
         list.setBorder(new EmptyBorder(8, 0, 0, 0));
-        list.add(pendingItem("Chờ phê duyệt đổi / trả", "1 phiếu đang chờ quản lý", "clipboard", GOLD, "1"));
+        list.add(pendingItem("Chờ phê duyệt đổi / trả", "Chưa có dữ liệu", "clipboard", GOLD, "—"));
         list.add(new JSeparator());
-        list.add(pendingItem("Đơn đang xử lý", "Theo dõi tiến độ tại quầy", "cart", RED, "0"));
+        list.add(pendingItem("Đơn đang xử lý", "Theo dõi tiến độ tại quầy", "cart", RED, "—"));
         list.add(new JSeparator());
         list.add(Box.createVerticalStrut(12));
-        list.add(label("Dữ liệu minh họa từ thiết kế Green Home", 10, Font.PLAIN, MUTED));
+        list.add(label("Chưa có dữ liệu công việc cần xử lý", 10, Font.PLAIN, MUTED));
         card.add(list, BorderLayout.CENTER);
         return card;
     }
@@ -457,7 +459,7 @@ public class MainFrame extends JFrame {
 
     	RoundedPanel card = section(
     		    "Giao dịch gần đây",
-    		    "Hóa đơn mẫu đã thanh toán",
+    		    "Chưa có dữ liệu tổng quan",
     		    "Tra cứu",
     		    this::moLichSuHoaDon
     		);
@@ -468,10 +470,7 @@ public class MainFrame extends JFrame {
             "Thời gian"
         };
 
-        Object[][] rows = {
-            {"HD000001", "Trần Thị Mai", "11.610.000 đ", "15/10/2026"},
-            {"HD000002", "Lê Hoàng Nam", "2.500.000 đ", "16/10/2026"}
-        };
+        Object[][] rows = new Object[0][columns.length];
 
         DefaultTableModel model = new DefaultTableModel(rows, columns) {
             @Override
@@ -561,15 +560,11 @@ public class MainFrame extends JFrame {
     }
 
     private JPanel scheduleCard() {
-        RoundedPanel card = section("Lịch làm việc sắp tới", "Các ca đã phân công (mẫu)",
+        RoundedPanel card = section("Lịch làm việc sắp tới", "Chưa có dữ liệu phân công",
                 "Xem lịch", () -> showPage("Lịch làm việc"));
         JPanel list = vertical();
         list.setBorder(new EmptyBorder(3, 0, 0, 0));
-        list.add(scheduleRow(LocalDate.now().plusDays(1).format(DateTimeFormatter.ofPattern("dd/MM")), "Nguyễn Văn A", "Ca sáng · 08:00–14:00", BLUE));
-        list.add(new JSeparator());
-        list.add(scheduleRow(LocalDate.now().plusDays(1).format(DateTimeFormatter.ofPattern("dd/MM")), "Trần Thị Linh", "Ca chiều · 14:00–18:00", GOLD));
-        list.add(new JSeparator());
-        list.add(scheduleRow(LocalDate.now().plusDays(2).format(DateTimeFormatter.ofPattern("dd/MM")), "Lê Hoàng Minh", "Ca tối · 18:00–22:00", new Color(168, 112, 193)));
+        list.add(label("Chưa có dữ liệu lịch làm việc", 11, Font.PLAIN, MUTED));
         card.add(list, BorderLayout.CENTER);
         return card;
     }
@@ -679,6 +674,11 @@ public class MainFrame extends JFrame {
             return;
         }
         cardLayout.show(cardPanel, name);
+        for (Component component : cardPanel.getComponents()) {
+            if ("Đổi / trả".equals(name) && component instanceof DoiTraPanel panel) panel.lamMoi();
+            if ("Thống kê".equals(name) && component instanceof ThongKePanel panel) panel.lamMoi();
+            if ("Bán hàng".equals(name) && component instanceof BanHangChucNangPanel panel) panel.lamMoi();
+        }
         lblPageTitle.setText(name);
         for (Map.Entry<String, JButton> entry : menuButtons.entrySet()) {
             boolean selected = entry.getKey().equals(name);
@@ -862,36 +862,16 @@ public class MainFrame extends JFrame {
             int left = 44, top = 16, right = getWidth() - 16, bottom = getHeight() - 32;
             if (right <= left || bottom <= top) { p.dispose(); return; }
             p.setFont(new Font("SansSerif", Font.PLAIN, 10));
-            String[] ticks = {"0", "3 tr", "6 tr", "9 tr", "12 tr"};
-            for (int i = 0; i < ticks.length; i++) {
-                int y = bottom - (bottom - top) * i / 4;
-                p.setColor(new Color(62, 66, 72));
-                p.drawLine(left, y, right, y);
-                p.setColor(MUTED);
-                p.drawString(ticks[i], 5, y + 4);
-            }
-            String[] days = {"11/10", "12/10", "13/10", "14/10", "15/10", "16/10", "17/10"};
-            double[] values = {0, 0, 0, 0, 11.61, 2.5, 0};
-            int width = right - left;
-            for (int i = 0; i < days.length; i++) {
-                int x = left + (int) ((i + .5) * width / days.length);
-                int height = (int) ((bottom - top) * values[i] / 12.0);
-                if (height > 0) {
-                    p.setColor(BLUE);
-                    p.fillRoundRect(x - 10, bottom - height, 20, height, 4, 4);
-                }
-                p.setColor(MUTED);
-                int textWidth = p.getFontMetrics().stringWidth(days[i]);
-                p.drawString(days[i], x - textWidth / 2, bottom + 17);
-            }
+            p.setColor(MUTED);
+            p.drawString("Chưa có dữ liệu biểu đồ", left, top+25);
             p.dispose();
         }
     }
 
  // true: Quản lý | false: Nhân viên bán hàng
  //Giao dien nv:
- //new MainFrame("Nguyễn Văn A", false).setVisible(true);
+
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new MainFrame("Trần Minh Quân", true).setVisible(true));
+        SwingUtilities.invokeLater(() -> new LoginFrame().setVisible(true));
     }
 }

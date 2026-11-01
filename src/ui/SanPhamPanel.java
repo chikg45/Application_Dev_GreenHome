@@ -115,123 +115,13 @@ public class SanPhamPanel extends JPanel {
         setBackground(BG);
         setLayout(new BorderLayout());
 
-        taoDuLieuMau();
         taoGiaoDien();
         taiDanhSach();
     }
 
     // ==================== DỮ LIỆU MẪU ====================
 
-    private void taoDuLieuMau() {
 
-        SanPhamMau iphone = new SanPhamMau(
-            "SP0001",
-            "iPhone 15",
-            "Điện thoại",
-            "Mới",
-            "iPhone",
-            "128GB · Xanh dương",
-            "128GB · Xanh dương",
-            18990000,
-            "SP0001",
-            "Cái",
-            12,
-            6,
-            true,
-            true
-        );
-
-        for (int i = 0; i < 6; i++) {
-            iphone.serials.add("35278143010000" + i);
-        }
-
-        sanPhams.add(iphone);
-
-        sanPhams.add(new SanPhamMau(
-            "SP0002",
-            "Dell Inspiron 15",
-            "Laptop",
-            "Mới",
-            "Dell",
-            "Core i5 · RAM 16GB · SSD 512GB",
-            "Laptop văn phòng",
-            22500000,
-            "SP0002",
-            "Cái",
-            12,
-            4,
-            true,
-            true
-        ));
-
-        sanPhams.add(new SanPhamMau(
-            "SP0003",
-            "Samsung Crystal UHD",
-            "Tivi",
-            "Mới",
-            "Samsung",
-            "55 inch · 4K",
-            "Smart TV 55 inch",
-            12900000,
-            "SP0003",
-            "Cái",
-            24,
-            4,
-            true,
-            true
-        ));
-
-        sanPhams.add(new SanPhamMau(
-            "SP0004",
-            "Tai nghe Bluetooth",
-            "Phụ kiện",
-            "Mới",
-            "Khác",
-            "Không dây",
-            "Tai nghe không dây",
-            1250000,
-            "SP0004",
-            "Cái",
-            6,
-            16,
-            false,
-            true
-        ));
-
-        sanPhams.add(new SanPhamMau(
-            "SP0005",
-            "Tủ lạnh Panasonic",
-            "Tủ lạnh",
-            "Mới",
-            "Panasonic",
-            "Inverter",
-            "Tủ lạnh Inverter",
-            9015500,
-            "SP0005",
-            "Cái",
-            12,
-            3,
-            true,
-            true
-        ));
-
-        sanPhams.add(new SanPhamMau(
-            "SP0006",
-            "Máy giặt LG Inverter",
-            "Máy giặt",
-            "Mới",
-            "LG",
-            "Inverter",
-            "Máy giặt cửa trước",
-            10570800,
-            "SP0006",
-            "Cái",
-            24,
-            2,
-            true,
-            true
-        ));
-    }
 
     // ==================== GIAO DIỆN CHÍNH ====================
 

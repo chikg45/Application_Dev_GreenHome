@@ -34,59 +34,7 @@ public final class HoaDonDialog {
 
     private static final List<HoaDon> HOA_DON = new ArrayList<>();
 
-    static {
 
-        HOA_DON.add(new HoaDon(
-            "HD000003",
-            "Khách vãng lai",
-            "",
-            "23:25 07/10/2026",
-            "Nguyễn Văn A - NV0001",
-            "Tủ lạnh Panasonic",
-            "",
-            1,
-            9015500,
-            0,
-            "Tiền mặt",
-            9015500,
-            0,
-            0
-        ));
-
-        HOA_DON.add(new HoaDon(
-            "HD000002",
-            "Lê Hoàng Nam",
-            "0383456789",
-            "23:25 16/10/2026",
-            "Trần Thị Linh - NV0002",
-            "Tai nghe Bluetooth",
-            "",
-            2,
-            1250000,
-            0,
-            "Tiền mặt",
-            2500000,
-            0,
-            70
-        ));
-
-        HOA_DON.add(new HoaDon(
-            "HD000001",
-            "Trần Thị Mai",
-            "0932345678",
-            "23:25 15/10/2026",
-            "Trần Thị Linh - NV0002",
-            "Samsung Crystal UHD (Mới)",
-            "TV55 - 24005",
-            1,
-            12900000,
-            1290000,
-            "Tiền mặt",
-            11610000,
-            116,
-            296
-        ));
-    }
 
     private HoaDonDialog() {
     }

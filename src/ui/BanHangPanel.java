@@ -99,7 +99,6 @@ public class BanHangPanel extends JPanel {
         setLayout(new BorderLayout());
         setBackground(BG);
 
-        taoDuLieuMau();
         taoGiaoDien();
 
         locSanPham();
@@ -108,53 +107,7 @@ public class BanHangPanel extends JPanel {
 
     // ==================== DỮ LIỆU MẪU ====================
 
-    private void taoDuLieuMau() {
 
-        sanPhams.add(new SanPham(
-            "SP0001", "iPhone 15",
-            "Điện thoại", 18990000, 6, 0, "phone"
-        ));
-
-        sanPhams.add(new SanPham(
-            "SP0002", "Dell Inspiron 15",
-            "Laptop", 22500000, 4, 0, "laptop"
-        ));
-
-        sanPhams.add(new SanPham(
-            "SP0003", "Samsung Crystal UHD",
-            "Tivi", 11610000, 4, 10, "tv"
-        ));
-
-        sanPhams.add(new SanPham(
-            "SP0004", "Tai nghe Bluetooth",
-            "Phụ kiện", 1250000, 16, 0, "headphone"
-        ));
-
-        sanPhams.add(new SanPham(
-            "SP0005", "Tủ lạnh Panasonic",
-            "Tủ lạnh", 9015500, 3, 0, "fridge"
-        ));
-
-        sanPhams.add(new SanPham(
-            "SP0006", "Máy giặt LG Inverter",
-            "Máy giặt", 10570800, 2, 5, "washer"
-        ));
-
-        khachHangs.add(new KhachHang(
-            "KH000000001", "Nguyễn Văn An",
-            "0901234567", "", "", 1230
-        ));
-
-        khachHangs.add(new KhachHang(
-            "KH000000002", "Trần Thị Mai",
-            "0932345678", "", "", 296
-        ));
-
-        khachHangs.add(new KhachHang(
-            "KH000000003", "Lê Hoàng Nam",
-            "0383456789", "", "", 70
-        ));
-    }
 
     // ==================== GIAO DIỆN CHÍNH ====================
 
@@ -169,7 +122,7 @@ public class BanHangPanel extends JPanel {
         toolbar.setOpaque(false);
 
         toolbar.add(
-            text("▣  Đơn 01", 13, Font.BOLD,
+            text("▣  Chưa có đơn", 13, Font.BOLD,
                 new Color(157, 190, 250)),
             BorderLayout.WEST
         );
