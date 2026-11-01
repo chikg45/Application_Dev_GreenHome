@@ -1,0 +1,4 @@
+# SQL Server phải bật TCP/IP; sửa địa chỉ/cổng/database phù hợp máy của bạn.
+url=jdbc:sqlserver://localhost:1433;databaseName=GreenHome_TTai;encrypt=true;trustServerCertificate=true;loginTimeout=5;socketTimeout=15000
+user=greenhome_app
+password=
