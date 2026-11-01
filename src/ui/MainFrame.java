@@ -1,5 +1,9 @@
 package ui;
 
+import bus.BanHangBUS;
+import entity.NhanVien;
+import java.util.Objects;
+
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.geom.*;
@@ -29,6 +33,8 @@ public class MainFrame extends JFrame {
     private static final Color GOLD = new Color(193, 143, 55);
     private static final Color RED = new Color(183, 88, 91);
 
+    private final BanHangBUS banHangBUS;
+    private final NhanVien nhanVienDangNhap;
     private final String tenNguoiDung;
     private final boolean laQuanLy;
     private final CardLayout cardLayout = new CardLayout();
@@ -36,7 +42,20 @@ public class MainFrame extends JFrame {
     private final Map<String, JButton> menuButtons = new LinkedHashMap<>();
     private final JLabel lblPageTitle = label("Tổng quan", 17, Font.BOLD, TEXT);
 
+    /** Constructor khung UI cũ, chưa gắn phiên đăng nhập SQL. */
     public MainFrame(String tenNguoiDung, boolean laQuanLy) {
+        this(tenNguoiDung, laQuanLy, null, null);
+    }
+
+    /** Module đăng nhập gọi overload này sau khi đã xác thực nhân viên và vai trò. */
+    public MainFrame(NhanVien nhanVien, boolean laQuanLy) {
+        this(Objects.requireNonNull(nhanVien).getHoTen(), laQuanLy,
+             new BanHangBUS(nhanVien), nhanVien);
+    }
+
+    private MainFrame(String tenNguoiDung, boolean laQuanLy, BanHangBUS bus, NhanVien nhanVien) {
+        this.banHangBUS = bus;
+        this.nhanVienDangNhap = nhanVien;
         this.tenNguoiDung = tenNguoiDung;
         this.laQuanLy = laQuanLy;
         setTitle("Green Home - Quản lý bán hàng");
@@ -46,6 +65,11 @@ public class MainFrame extends JFrame {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         initComponents();
         showPage("Tổng quan");
+    }
+
+    private void moLichSuHoaDon() {
+        if (banHangBUS == null) HoaDonDialog.moDanhSach(this);
+        else new HoaDonChucNangDialog(banHangBUS).moDanhSach(this);
     }
 
     private void initComponents() {
@@ -168,7 +192,9 @@ public class MainFrame extends JFrame {
 
         } else if ("Bán hàng".equals(name)) {
 
-            cardPanel.add(new BanHangPanel(), name);
+            cardPanel.add(banHangBUS == null
+                ? new BanHangPanel()
+                : new BanHangChucNangPanel(banHangBUS, nhanVienDangNhap), name);
 
         } else if ("Khách hàng".equals(name)) {
 
@@ -433,7 +459,7 @@ public class MainFrame extends JFrame {
     		    "Giao dịch gần đây",
     		    "Hóa đơn mẫu đã thanh toán",
     		    "Tra cứu",
-    		    () -> HoaDonDialog.moDanhSach(this)
+    		    this::moLichSuHoaDon
     		);
         String[] columns = {
             "Hóa đơn",

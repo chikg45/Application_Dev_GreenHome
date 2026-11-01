@@ -4,7 +4,7 @@ import enums.PhuongThucThanhToan;
 import enums.TinhTrangSP;
 
 import entity.*;
-import dao.*;
+import bus.BanHangBUS;
 
 import java.awt.*;
 import java.awt.event.*;
@@ -22,7 +22,7 @@ import javax.swing.event.*;
  */
 public class BanHangChucNangPanel extends JPanel {
 
-    private final BanHangDAO banHangDAO;
+    private final BanHangBUS banHangBUS;
     private final NhanVien nhanVien;
     private final HoaDonChucNangDialog hoaDonDialog;
     private DonHang donHienTai;
@@ -109,11 +109,11 @@ public class BanHangChucNangPanel extends JPanel {
     // ==================== CONSTRUCTOR ====================
 
     /** Truyền DAO SQL Server và nhân viên từ phiên đăng nhập của nhóm. */
-    public BanHangChucNangPanel(BanHangDAO dao, NhanVien nguoiBan) {
-        banHangDAO = Objects.requireNonNull(dao);
+    public BanHangChucNangPanel(BanHangBUS bus, NhanVien nguoiBan) {
+        banHangBUS = Objects.requireNonNull(bus);
         nhanVien = Objects.requireNonNull(nguoiBan);
-        donHienTai = banHangDAO.taoDon();
-        hoaDonDialog = new HoaDonChucNangDialog(banHangDAO);
+        donHienTai = banHangBUS.taoDon();
+        hoaDonDialog = new HoaDonChucNangDialog(banHangBUS);
 
         setLayout(new BorderLayout());
         setBackground(BG);
@@ -126,7 +126,7 @@ public class BanHangChucNangPanel extends JPanel {
             public void removeUpdate(DocumentEvent e) { thayDoiMa(); }
             public void changedUpdate(DocumentEvent e) { thayDoiMa(); }
             private void thayDoiMa() {
-                if (!maUuDaiDaApDung.isEmpty() && !maUuDaiDaApDung.equals(BanHangDAO.chuanHoaMa(txtMaUuDai.getText()))) {
+                if (!maUuDaiDaApDung.isEmpty() && !maUuDaiDaApDung.equals(BanHangBUS.chuanHoaMa(txtMaUuDai.getText()))) {
                     maUuDaiDaApDung = ""; capNhatGioHang();
                 }
             }
@@ -139,8 +139,8 @@ public class BanHangChucNangPanel extends JPanel {
     // ==================== DỮ LIỆU TỪ DAO ====================
 
     private void napDuLieuBanHang() {
-        sanPhams.addAll(banHangDAO.getSanPhams());
-        khachHangs.addAll(banHangDAO.getKhachHangs());
+        sanPhams.addAll(banHangBUS.getSanPhams());
+        khachHangs.addAll(banHangBUS.getKhachHangs());
     }
 
     // ==================== GIAO DIỆN CHÍNH ====================
@@ -186,9 +186,9 @@ public class BanHangChucNangPanel extends JPanel {
             if (ok == JOptionPane.YES_OPTION) {
 
                 try {
-                    if (donHienTai != null) banHangDAO.huyDon(donHienTai);
+                    if (donHienTai != null) banHangBUS.huyDon(donHienTai);
                     donHienTai = null;
-                    donHienTai = banHangDAO.taoDon();
+                    donHienTai = banHangBUS.taoDon();
                 } catch (IllegalArgumentException | IllegalStateException ex) {
                     thongBao(ex.getMessage()); capNhatGioHang(); return;
                 }
@@ -340,7 +340,7 @@ public class BanHangChucNangPanel extends JPanel {
     private void locSanPham() {
 
         sanPhams.clear();
-        sanPhams.addAll(banHangDAO.getSanPhams());
+        sanPhams.addAll(banHangBUS.getSanPhams());
 
         productGrid.removeAll();
 
@@ -368,8 +368,8 @@ public class BanHangChucNangPanel extends JPanel {
 
             boolean dungTinhTrang =
                 tinhTrang.startsWith("Tất cả")
-                || (tinhTrang.equals("Còn hàng") && banHangDAO.getSoLuongCoTheBan(p) > 0)
-                || (tinhTrang.equals("Hết hàng") && banHangDAO.getSoLuongCoTheBan(p) <= 0);
+                || (tinhTrang.equals("Còn hàng") && banHangBUS.getSoLuongCoTheBan(p) > 0)
+                || (tinhTrang.equals("Hết hàng") && banHangBUS.getSoLuongCoTheBan(p) <= 0);
 
             if (dungTen && dungDanhMuc && dungTinhTrang && p.getTinhTrang() != TinhTrangSP.NGUNG_BAN) {
                 productGrid.add(taoTheSanPham(p));
@@ -419,28 +419,28 @@ public class BanHangChucNangPanel extends JPanel {
 
         info.add(Box.createVerticalStrut(5));
 
-        String uuDai = banHangDAO.getPhanTramGiam(p) > 0
-            ? "Ưu đãi: -" + banHangDAO.getPhanTramGiam(p) + "%"
+        String uuDai = banHangBUS.getPhanTramGiam(p) > 0
+            ? "Ưu đãi: -" + banHangBUS.getPhanTramGiam(p) + "%"
             : "Giá đã gồm VAT";
 
         info.add(text(
             uuDai,
             10,
             Font.PLAIN,
-            banHangDAO.getPhanTramGiam(p) > 0 ? GREEN : MUTED
+            banHangBUS.getPhanTramGiam(p) > 0 ? GREEN : MUTED
         ));
 
         JPanel bottom = new JPanel(new BorderLayout());
         bottom.setOpaque(false);
 
         bottom.add(
-            text("Còn " + banHangDAO.getSoLuongCoTheBan(p), 10, Font.PLAIN, MUTED),
+            text("Còn " + banHangBUS.getSoLuongCoTheBan(p), 10, Font.PLAIN, MUTED),
             BorderLayout.WEST
         );
 
         JButton add = secondary("+ Thêm");
 
-        add.setEnabled(banHangDAO.getSoLuongCoTheBan(p) > 0);
+        add.setEnabled(banHangBUS.getSoLuongCoTheBan(p) > 0);
 
         add.addActionListener(e -> themSanPham(p));
 
@@ -600,8 +600,8 @@ public class BanHangChucNangPanel extends JPanel {
     private void doiSoLuong(SanPham p, int delta) {
         if (donHienTai == null) { thongBao("Bấm Đơn mới để tiếp tục bán hàng."); return; }
         try {
-            int sl = Math.max(0, banHangDAO.getSoLuong(donHienTai, p.getMaSP()) + delta);
-            banHangDAO.datSoLuong(donHienTai, p.getMaSP(), sl);
+            int sl = Math.max(0, banHangBUS.getSoLuong(donHienTai, p.getMaSP()) + delta);
+            banHangBUS.datSoLuong(donHienTai, p.getMaSP(), sl);
             capNhatGioHang();
         } catch (IllegalArgumentException | IllegalStateException ex) { thongBao(ex.getMessage()); }
     }
@@ -624,10 +624,10 @@ public class BanHangChucNangPanel extends JPanel {
         }
 
         gioHang.clear();
-        gioHang.putAll(banHangDAO.getGioHang(donHienTai));
+        gioHang.putAll(banHangBUS.getGioHang(donHienTai));
         String loiBaoGia = null;
         try {
-            baoGiaHienTai = banHangDAO.baoGia(donHienTai, khachDaChon, maUuDaiDaApDung, cbDungDiem.isSelected());
+            baoGiaHienTai = banHangBUS.baoGia(donHienTai, khachDaChon, maUuDaiDaApDung, cbDungDiem.isSelected());
         } catch (IllegalArgumentException | IllegalStateException ex) {
             baoGiaHienTai = null; loiBaoGia = ex.getMessage();
         }
@@ -697,7 +697,7 @@ public class BanHangChucNangPanel extends JPanel {
             );
 
             del.addActionListener(e -> {
-                banHangDAO.datSoLuong(donHienTai, p.getMaSP(), 0);
+                banHangBUS.datSoLuong(donHienTai, p.getMaSP(), 0);
                 capNhatGioHang();
             });
 
@@ -847,8 +847,8 @@ public class BanHangChucNangPanel extends JPanel {
 
         apDung.addActionListener(e -> {
             try {
-                String ma = BanHangDAO.chuanHoaMa(txtMaUuDai.getText());
-                banHangDAO.kiemTraUuDai(ma, khachDaChon);
+                String ma = BanHangBUS.chuanHoaMa(txtMaUuDai.getText());
+                banHangBUS.kiemTraUuDai(ma, khachDaChon);
                 maUuDaiDaApDung = ma;
                 capNhatGioHang();
                 thongBao(ma.isEmpty() ? "Đã bỏ ưu đãi cá nhân." : "Đã xét mã ưu đãi. Mỗi sản phẩm áp dụng mức giảm cao nhất.");
@@ -1014,7 +1014,7 @@ public class BanHangChucNangPanel extends JPanel {
         if (gioHang.isEmpty()) { thongBao("Giỏ hàng đang trống."); return; }
         final BaoGia duKien;
         try {
-            duKien = banHangDAO.baoGia(donHienTai, khachDaChon, maUuDaiDaApDung, cbDungDiem.isSelected());
+            duKien = banHangBUS.baoGia(donHienTai, khachDaChon, maUuDaiDaApDung, cbDungDiem.isSelected());
         } catch (IllegalArgumentException | IllegalStateException ex) { thongBao(ex.getMessage()); capNhatGioHang(); return; }
         JComboBox<String> method = new JComboBox<>(new String[] { "Tiền mặt", "Chuyển khoản" });
         JTextField cash = new JTextField(String.valueOf(duKien.canTra()));
@@ -1041,10 +1041,10 @@ public class BanHangChucNangPanel extends JPanel {
                     "Xác nhận chuyển khoản", JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION;
                 if (!daXacNhan) return;
             }
-            HoaDonBanHang hd = banHangDAO.thanhToan(donHienTai, khachDaChon, maUuDaiDaApDung,
+            HoaDonBanHang hd = banHangBUS.thanhToan(donHienTai, khachDaChon, maUuDaiDaApDung,
                 cbDungDiem.isSelected(), nhanVien, pt, tienNhan, daXacNhan, duKien);
             donHienTai = null;
-            try { donHienTai = banHangDAO.taoDon(); }
+            try { donHienTai = banHangBUS.taoDon(); }
             catch (IllegalStateException ex) { thongBao("Hóa đơn đã lưu; chưa tạo được đơn tiếp theo: " + ex.getMessage()); }
             gioHang.clear(); khachDaChon = null;
             txtTimKhach.setText(""); cbDungDiem.setSelected(false); xoaUuDai();

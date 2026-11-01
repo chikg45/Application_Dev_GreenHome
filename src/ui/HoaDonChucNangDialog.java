@@ -1,7 +1,7 @@
 package ui;
 
 import entity.DongHoaDonBanHang;
-import dao.BanHangDAO;
+import bus.BanHangBUS;
 
 import java.awt.*;
 import java.awt.print.PrinterException;
@@ -33,11 +33,11 @@ public final class HoaDonChucNangDialog {
     private static final Color BLUE = new Color(54, 111, 232);
     private static final Color GREEN = new Color(56, 176, 125);
 
-    // ==================== DU LIEU MAU ====================
+    // ==================== DU LIEU HOA DON TU BUS ====================
 
-    private final BanHangDAO banHangDAO;
-    public HoaDonChucNangDialog(BanHangDAO banHangDAO) { this.banHangDAO = banHangDAO; }
-    private List<HoaDon> danhSach() { return banHangDAO.getHoaDons().stream().map(HoaDon::new).toList(); }
+    private final BanHangBUS banHangBUS;
+    public HoaDonChucNangDialog(BanHangBUS banHangBUS) { this.banHangBUS = banHangBUS; }
+    private List<HoaDon> danhSach() { return banHangBUS.getHoaDons().stream().map(HoaDon::new).toList(); }
 
     // ==================== DANH SACH HOA DON ====================
 
