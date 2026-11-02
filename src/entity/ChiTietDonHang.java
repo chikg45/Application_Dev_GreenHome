@@ -62,9 +62,9 @@ public class ChiTietDonHang {
 
     public void setDonGia(double donGia) {
 
-        if (!Double.isFinite(donGia) || donGia < 0) {
+        if (!Double.isFinite(donGia) || donGia <= 0) {
             throw new IllegalArgumentException(
-                "Đơn giá phải là số không âm và hữu hạn"
+                "Đơn giá phải lớn hơn 0 và hữu hạn"
             );
         }
 
@@ -136,17 +136,12 @@ public class ChiTietDonHang {
         this.soLuong = slMoi;
     }
 
-    /**
-     * Tính thành tiền của chi tiết đơn hàng.
-     *
-     * Công thức:
-     * Thành tiền = Số lượng * Đơn giá
-     */
-    public double getThanhTienDonHang() {
 
+
+    /** Thanh tien don hang = so luong * don gia tai thoi diem dat. */
+    public double getThanhTienDonHang() {
         return soLuong * donGia;
     }
-
 
     // ==================== TOSTRING ====================
 
@@ -166,7 +161,6 @@ public class ChiTietDonHang {
                 ", soLuong=" + soLuong +
                 ", donGia=" + donGia +
                 ", serialIMEI='" + serialIMEI + '\'' +
-                ", thanhTienDonHang=" + getThanhTienDonHang() +
                 '}';
     }
 }

@@ -13,6 +13,8 @@ public class ChiTietHoaDon {
     private double donGia;
     private String serialIMEI;
     private double soTienGiam;
+    // Snapshot ten san pham khi lap chi tiet, khong doi theo ten SP hien tai.
+    private String tenSP;
 
     // Quan hệ với SanPham: mỗi chi tiết có đúng 1 sản phẩm
     private SanPham sanPham;
@@ -67,6 +69,8 @@ public class ChiTietHoaDon {
             );
         }
 
+        if (soTienGiam > soLuong * donGia && donGia > 0)
+            throw new IllegalArgumentException("Tiền giảm không được vượt thành tiền dòng.");
         this.soLuong = soLuong;
     }
 
@@ -75,12 +79,14 @@ public class ChiTietHoaDon {
     }
 
     public void setDonGia(double donGia) {
-        if (!Double.isFinite(donGia) || donGia < 0) {
+        if (!Double.isFinite(donGia) || donGia <= 0) {
             throw new IllegalArgumentException(
-                "Đơn giá phải là số không âm và hữu hạn"
+                "Đơn giá phải lớn hơn 0 và hữu hạn"
             );
         }
 
+        if (soLuong > 0 && soTienGiam > soLuong * donGia)
+            throw new IllegalArgumentException("Tiền giảm không được vượt thành tiền dòng.");
         this.donGia = donGia;
     }
 
@@ -103,6 +109,9 @@ public class ChiTietHoaDon {
             );
         }
 
+        if (soTienGiam > 0 && (soLuong <= 0 || donGia <= 0
+                || soTienGiam > soLuong * donGia))
+            throw new IllegalArgumentException("Tiền giảm chỉ được nhập sau số lượng/đơn giá hợp lệ và không vượt thành tiền dòng.");
         this.soTienGiam = soTienGiam;
     }
 
@@ -114,12 +123,20 @@ public class ChiTietHoaDon {
     }
 
     public void setSanPham(SanPham sanPham) {
-        this.sanPham = Objects.requireNonNull(
-            sanPham,
-            "Sản phẩm không được null"
-        );
+        this.sanPham = Objects.requireNonNull(sanPham, "Sản phẩm không được null");
+        if (this.tenSP == null) this.tenSP = sanPham.getTenSP();
     }
 
+
+    public String getTenSP() { return tenSP; }
+    public void setTenSP(String tenSP) {
+        if (tenSP == null || tenSP.isBlank())
+            throw new IllegalArgumentException("Tên SP tại thời điểm bán không được trống.");
+        this.tenSP = tenSP.trim();
+    }
+
+    /** Thanh tien dong da tru giam khuyen mai (chua tru diem tich luy). */
+    public double getThanhTien() { return soLuong * donGia - soTienGiam; }
 
     // ==================== QUAN HỆ VỚI HOADON ====================
 
@@ -173,30 +190,16 @@ public class ChiTietHoaDon {
             );
         }
 
-        if (!danhSachChiTietPhieuDoiTra.contains(chiTiet)) {
+        if (chiTiet.getChiTietHoaDon() != this)
+            throw new IllegalArgumentException("Chi tiết đổi trả không thuộc dòng hóa đơn này.");
+        if (!danhSachChiTietPhieuDoiTra.contains(chiTiet))
             danhSachChiTietPhieuDoiTra.add(chiTiet);
-        }
     }
 
     public void xoaChiTietPhieuDoiTra(
             ChiTietPhieuDoiTra chiTiet) {
 
         danhSachChiTietPhieuDoiTra.remove(chiTiet);
-    }
-
-
-    // ==================== PHƯƠNG THỨC NGHIỆP VỤ ====================
-
-    /**
-     * Tính thành tiền của chi tiết hóa đơn.
-     *
-     * Thành tiền = Số lượng * Đơn giá - Số tiền giảm
-     */
-    public double getThanhTien() {
-
-        double tongTienHang = soLuong * donGia;
-
-        return Math.max(0, tongTienHang - soTienGiam);
     }
 
 
@@ -215,7 +218,6 @@ public class ChiTietHoaDon {
                 ", donGia=" + donGia +
                 ", serialIMEI='" + serialIMEI + '\'' +
                 ", soTienGiam=" + soTienGiam +
-                ", thanhTien=" + getThanhTien() +
                 ", maKM='" + (
                     khuyenMai != null
                         ? khuyenMai.getMaKM()

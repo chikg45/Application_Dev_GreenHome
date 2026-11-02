@@ -1,6 +1,7 @@
 package entity;
 
 import java.time.LocalDate;
+import java.time.Period;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -14,6 +15,7 @@ public class NhanVien {
     private LocalDate ngaySinh;
     private LocalDate ngayVaoLam;
     private String diaChi;
+    private boolean dangLamViec = true;
 
     // Quan he 1 - 1 voi TaiKhoan
     private TaiKhoan taiKhoan;
@@ -29,14 +31,14 @@ public class NhanVien {
                     LocalDate ngayVaoLam, String diaChi,
                     TaiKhoan taiKhoan) {
 
-        this.maNV = maNV;
-        this.hoTen = hoTen;
-        this.sdtNV = sdtNV;
-        this.soCCCD = soCCCD;
-        this.ngaySinh = ngaySinh;
-        this.ngayVaoLam = ngayVaoLam;
-        this.diaChi = diaChi;
-        this.taiKhoan = taiKhoan;
+        setMaNV(maNV);
+        setHoTen(hoTen);
+        setSdtNV(sdtNV);
+        setSoCCCD(soCCCD);
+        setNgaySinh(ngaySinh);
+        setNgayVaoLam(ngayVaoLam);
+        setDiaChi(diaChi);
+        if (taiKhoan != null) setTaiKhoan(taiKhoan);
     }
 
     public String getMaNV() {
@@ -44,6 +46,11 @@ public class NhanVien {
     }
 
     public void setMaNV(String maNV) {
+        // Bang 4.1: NV + dung 4 chu so.
+        if (maNV == null || !maNV.matches("NV[0-9]{4}"))
+            throw new IllegalArgumentException("Mã nhân viên phải có dạng NV0001 (NV + 4 chữ số).");
+        if (this.maNV != null && !this.maNV.equals(maNV))
+            throw new IllegalArgumentException("Mã nhân viên không được thay đổi.");
         this.maNV = maNV;
     }
 
@@ -52,7 +59,9 @@ public class NhanVien {
     }
 
     public void setHoTen(String hoTen) {
-        this.hoTen = hoTen;
+        if (hoTen == null || hoTen.trim().length() < 2 || hoTen.trim().length() > 50)
+            throw new IllegalArgumentException("Họ tên nhân viên phải từ 2 đến 50 ký tự.");
+        this.hoTen = hoTen.trim();
     }
 
     public String getSdtNV() {
@@ -60,6 +69,8 @@ public class NhanVien {
     }
 
     public void setSdtNV(String sdtNV) {
+        if (sdtNV == null || !sdtNV.matches("0\\d{9}"))
+            throw new IllegalArgumentException("SĐT nhân viên phải có 10 chữ số, bắt đầu bằng 0.");
         this.sdtNV = sdtNV;
     }
 
@@ -68,6 +79,8 @@ public class NhanVien {
     }
 
     public void setSoCCCD(String soCCCD) {
+        if (soCCCD == null || !soCCCD.matches("\\d{12}"))
+            throw new IllegalArgumentException("CCCD phải gồm đúng 12 chữ số.");
         this.soCCCD = soCCCD;
     }
 
@@ -76,6 +89,10 @@ public class NhanVien {
     }
 
     public void setNgaySinh(LocalDate ngaySinh) {
+        if (ngaySinh == null || ngaySinh.isAfter(LocalDate.now().minusYears(18)))
+            throw new IllegalArgumentException("Nhân viên phải đủ 18 tuổi.");
+        if (ngayVaoLam != null && ngayVaoLam.isBefore(ngaySinh))
+            throw new IllegalArgumentException("Ngày sinh không được sau ngày vào làm.");
         this.ngaySinh = ngaySinh;
     }
 
@@ -84,8 +101,14 @@ public class NhanVien {
     }
 
     public void setNgayVaoLam(LocalDate ngayVaoLam) {
+        if (ngayVaoLam == null || ngayVaoLam.isAfter(LocalDate.now())
+                || (ngaySinh != null && ngayVaoLam.isBefore(ngaySinh)))
+            throw new IllegalArgumentException("Ngày vào làm không hợp lệ.");
         this.ngayVaoLam = ngayVaoLam;
     }
+
+    public boolean isDangLamViec() { return dangLamViec; }
+    public void setDangLamViec(boolean v) { this.dangLamViec = v; }
 
     public String getDiaChi() {
         return diaChi;
@@ -100,7 +123,11 @@ public class NhanVien {
     }
 
     public void setTaiKhoan(TaiKhoan taiKhoan) {
+        if (this.taiKhoan == taiKhoan) return;
+        TaiKhoan cu = this.taiKhoan;
         this.taiKhoan = taiKhoan;
+        if (cu != null && cu.getNhanVien() == this) cu.setNhanVien(null);
+        if (taiKhoan != null && taiKhoan.getNhanVien() != this) taiKhoan.setNhanVien(this);
     }
 
     // Lay danh sach phan cong ca
@@ -131,37 +158,6 @@ public class NhanVien {
         danhSachPhanCong.remove(phanCong);
     }
 
-    // Dem tong so ca trong tuan
-    // ngayDauTuan la ngay thu Hai
-    public int demSoCaTrongTuan(LocalDate ngayDauTuan) {
-
-        if (ngayDauTuan == null) {
-            throw new IllegalArgumentException(
-                    "Ngay dau tuan khong duoc null");
-        }
-
-        LocalDate ngayCuoiTuan = ngayDauTuan.plusDays(6);
-        int soCa = 0;
-
-        for (PhanCongCa pc : danhSachPhanCong) {
-
-            LocalDate ngayLam = pc.getNgayLam();
-
-            if (ngayLam != null
-                    && !ngayLam.isBefore(ngayDauTuan)
-                    && !ngayLam.isAfter(ngayCuoiTuan)) {
-
-                soCa++;
-            }
-        }
-
-        return soCa;
-    }
-
-    // Tinh tong so ca da duoc phan cong
-    public int demTongSoCa() {
-        return danhSachPhanCong.size();
-    }
 
     @Override
     public String toString() {
@@ -173,7 +169,6 @@ public class NhanVien {
                 ", ngaySinh=" + ngaySinh +
                 ", ngayVaoLam=" + ngayVaoLam +
                 ", diaChi='" + diaChi + '\'' +
-                ", tongSoCa=" + demTongSoCa() +
                 '}';
     }
 }

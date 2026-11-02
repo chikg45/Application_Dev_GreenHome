@@ -37,11 +37,11 @@ public class PhieuDoiTra {
                     "Nhan vien khong duoc null");
         }
 
-        this.maPhieuDoiTra = maPhieuDoiTra;
-        this.ngayLap = ngayLap;
-        this.trangThaiDuyet = trangThaiDuyet;
-        this.hoaDon = hoaDon;
-        this.nhanVien = nhanVien;
+        setMaPhieuDoiTra(maPhieuDoiTra);
+        setNgayLap(ngayLap);
+        setTrangThaiDuyet(trangThaiDuyet);
+        setHoaDon(hoaDon);
+        setNhanVien(nhanVien);
     }
 
     // =========================
@@ -53,6 +53,11 @@ public class PhieuDoiTra {
     }
 
     public void setMaPhieuDoiTra(String maPhieuDoiTra) {
+        // Bang 4.9: DT + 8 chu so; bat bien sau khi tao.
+        if (maPhieuDoiTra == null || !maPhieuDoiTra.matches("DT[0-9]{8}"))
+            throw new IllegalArgumentException("Mã phiếu đổi trả phải có dạng DT00000001 (DT + 8 chữ số).");
+        if (this.maPhieuDoiTra != null && !this.maPhieuDoiTra.equals(maPhieuDoiTra))
+            throw new IllegalArgumentException("Không được thay đổi mã phiếu đổi trả.");
         this.maPhieuDoiTra = maPhieuDoiTra;
     }
 
@@ -61,6 +66,8 @@ public class PhieuDoiTra {
     }
 
     public void setNgayLap(LocalDateTime ngayLap) {
+        if (ngayLap == null || ngayLap.isAfter(LocalDateTime.now()))
+            throw new IllegalArgumentException("Ngày lập phiếu không hợp lệ.");
         this.ngayLap = ngayLap;
     }
 
@@ -69,6 +76,8 @@ public class PhieuDoiTra {
     }
 
     public void setTrangThaiDuyet(TrangThaiDuyet trangThaiDuyet) {
+        if (trangThaiDuyet == null)
+            throw new IllegalArgumentException("Trạng thái duyệt không được null.");
         this.trangThaiDuyet = trangThaiDuyet;
     }
 
@@ -142,35 +151,27 @@ public class PhieuDoiTra {
     }
 
     // =========================
-    // PHUONG THUC NGHIEP VU
+    // KIEM TRA DANH SACH CHI TIET
     // =========================
-
-    // Kiem tra thoi han doi tra toi da 7 ngay
-    public boolean kiemTraTrongHan7Ngay(LocalDateTime ngayMua) {
-
-        if (ngayMua == null || ngayLap == null) {
-            return false;
-        }
-
-        return !ngayLap.isBefore(ngayMua)
-                && !ngayLap.isAfter(ngayMua.plusDays(7));
-    }
-
-    // Tinh tong tien hoan
-    public double tinhTongTienHoan() {
-
-        double tongTienHoan = 0;
-
-        for (ChiTietPhieuDoiTra chiTiet : danhSachChiTiet) {
-            tongTienHoan += chiTiet.getThanhTienHoan();
-        }
-
-        return tongTienHoan;
-    }
 
     // Kiem tra phieu co it nhat mot chi tiet
     public boolean coChiTiet() {
         return !danhSachChiTiet.isEmpty();
+    }
+
+    /** Xac dinh phieu duoc lap trong 7 ngay tinh tu ngay lap hoa don. */
+    public boolean kiemTraTrongHan7Ngay() {
+        if (hoaDon == null || hoaDon.getNgayLap() == null || ngayLap == null) return false;
+        long giay = java.time.Duration.between(hoaDon.getNgayLap(), ngayLap).getSeconds();
+        return giay >= 0 && giay <= 7L * 24 * 60 * 60;
+    }
+
+    /** Tong hoan tien cac dong co hinh thuc HOAN_TIEN. Chua tinh diem da su dung. */
+    public double tinhTongTienHoan() {
+        double tong = 0;
+        for (ChiTietPhieuDoiTra ct : danhSachChiTiet)
+            if (ct.getHinhThucXuLy() == HinhThucXuLy.HOAN_TIEN) tong += ct.getThanhTienHoan();
+        return tong;
     }
 
     // =========================

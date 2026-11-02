@@ -62,13 +62,12 @@ public class DonHang {
     }
 
     public void setMaDH(String maDH) {
-        if (maDH == null || maDH.trim().isEmpty()) {
-            throw new IllegalArgumentException(
-                "Mã đơn hàng không được rỗng"
-            );
-        }
-
-        this.maDH = maDH.trim();
+        // Bang 4.6: DH + 8 chu so; bat bien sau khi tao.
+        if (maDH == null || !maDH.matches("DH[0-9]{8}"))
+            throw new IllegalArgumentException("Mã đơn hàng phải có dạng DH00000001 (DH + 8 chữ số).");
+        if (this.maDH != null && !this.maDH.equals(maDH))
+            throw new IllegalArgumentException("Không được thay đổi mã đơn hàng.");
+        this.maDH = maDH;
     }
 
     public LocalDateTime getNgayDat() {
@@ -76,9 +75,9 @@ public class DonHang {
     }
 
     public void setNgayDat(LocalDateTime ngayDat) {
-        this.ngayDat = Objects.requireNonNull(
-            ngayDat, "Ngày đặt không được null"
-        );
+        if (ngayDat == null || ngayDat.isAfter(LocalDateTime.now()))
+            throw new IllegalArgumentException("Ngày đặt không được null hoặc trong tương lai.");
+        this.ngayDat = ngayDat;
     }
 
     public TrangThaiDonHang getTrangThaiDH() {
@@ -181,46 +180,13 @@ public class DonHang {
     }
 
 
-    // ==================== PHƯƠNG THỨC NGHIỆP VỤ ====================
 
-    /**
-     * Tính tổng tiền đơn hàng từ các chi tiết đơn hàng.
-     *
-     * Tổng tiền = Tổng thành tiền của từng chi tiết.
-     */
+    /** Tong tien hang truoc giam gia, cong cac chi tiet don hang. */
     public double tinhTongTienDonHang() {
-
-        double tongTien = 0;
-
-        for (ChiTietDonHang chiTiet : danhSachChiTietDonHang) {
-            tongTien += chiTiet.getThanhTienDonHang();
-        }
-
-        return tongTien;
+        double tong = 0;
+        for (ChiTietDonHang ct : danhSachChiTietDonHang) tong += ct.getThanhTienDonHang();
+        return tong;
     }
-
-    /**
-     * Kiểm tra đơn hàng có đủ thông tin để xác nhận.
-     *
-     * Đây là phương thức bổ sung để đảm bảo bội số 1..*
-     * giữa DonHang và ChiTietDonHang.
-     */
-    public boolean coTheXacNhan() {
-        return maDH != null
-                && ngayDat != null
-                && trangThaiDH != null
-                && khachHang != null
-                && nhanVien != null
-                && !danhSachChiTietDonHang.isEmpty();
-    }
-
-
-    // ==================== THUỘC TÍNH DẪN XUẤT ====================
-
-    public double getTongTienDonHang() {
-        return tinhTongTienDonHang();
-    }
-
 
     // ==================== TOSTRING ====================
 
@@ -237,7 +203,6 @@ public class DonHang {
                         : null
                 ) +
                 ", soChiTiet=" + danhSachChiTietDonHang.size() +
-                ", tongTienDonHang=" + tinhTongTienDonHang() +
                 '}';
     }
 }

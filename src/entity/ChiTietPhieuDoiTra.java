@@ -35,9 +35,8 @@ public class ChiTietPhieuDoiTra {
                     "So luong phai lon hon 0");
         }
 
-        if (donGia < 0) {
-            throw new IllegalArgumentException(
-                    "Don gia khong duoc am");
+        if (!Double.isFinite(donGia) || donGia <= 0) {
+            throw new IllegalArgumentException("Đơn giá phải lớn hơn 0 và hữu hạn.");
         }
 
         if (sanPham == null || phieuDoiTra == null
@@ -50,7 +49,12 @@ public class ChiTietPhieuDoiTra {
             throw new IllegalArgumentException(
                     "San pham khong khop voi chi tiet hoa don");
         }
+        if (chiTietHoaDon.getHoaDon() != null && phieuDoiTra.getHoaDon() != null
+                && chiTietHoaDon.getHoaDon() != phieuDoiTra.getHoaDon())
+            throw new IllegalArgumentException("Phiếu trả và dòng gốc không cùng hóa đơn.");
 
+        if (soLuong > chiTietHoaDon.getSoLuong())
+            throw new IllegalArgumentException("Số lượng trả vượt số lượng mua của dòng gốc.");
         this.soLuong = soLuong;
         this.donGia = donGia;
         this.serialIMEI = serialIMEI;
@@ -76,6 +80,8 @@ public class ChiTietPhieuDoiTra {
             throw new IllegalArgumentException(
                     "So luong phai lon hon 0");
         }
+        if (chiTietHoaDon != null && soLuong > chiTietHoaDon.getSoLuong())
+            throw new IllegalArgumentException("Số lượng trả vượt số lượng dòng gốc.");
         this.soLuong = soLuong;
     }
 
@@ -84,9 +90,8 @@ public class ChiTietPhieuDoiTra {
     }
 
     public void setDonGia(double donGia) {
-        if (donGia < 0) {
-            throw new IllegalArgumentException(
-                    "Don gia khong duoc am");
+        if (!Double.isFinite(donGia) || donGia <= 0) {
+            throw new IllegalArgumentException("Đơn giá phải lớn hơn 0 và hữu hạn.");
         }
         this.donGia = donGia;
     }
@@ -152,6 +157,10 @@ public class ChiTietPhieuDoiTra {
     }
 
     public void setPhieuDoiTra(PhieuDoiTra phieuDoiTra) {
+        if (phieuDoiTra != null && chiTietHoaDon != null
+                && phieuDoiTra.getHoaDon() != null && chiTietHoaDon.getHoaDon() != null
+                && phieuDoiTra.getHoaDon() != chiTietHoaDon.getHoaDon())
+            throw new IllegalArgumentException("Phiếu trả và dòng gốc không cùng hóa đơn.");
         this.phieuDoiTra = phieuDoiTra;
     }
 
@@ -171,25 +180,26 @@ public class ChiTietPhieuDoiTra {
                     "Chi tiet hoa don khong khop voi san pham");
         }
 
+        if (phieuDoiTra != null && phieuDoiTra.getHoaDon() != null
+                && chiTietHoaDon.getHoaDon() != null
+                && phieuDoiTra.getHoaDon() != chiTietHoaDon.getHoaDon())
+            throw new IllegalArgumentException("Phiếu trả và dòng gốc không cùng hóa đơn.");
+        if (soLuong > 0 && chiTietHoaDon.getSoLuong() > 0 && soLuong > chiTietHoaDon.getSoLuong())
+            throw new IllegalArgumentException("Số lượng trả vượt số lượng mua.");
         this.chiTietHoaDon = chiTietHoaDon;
     }
 
-    // =========================
-    // PHƯƠNG THỨC NGHIỆP VỤ
-    // =========================
 
+    /**
+     * Tien hoan theo don gia thuc tra sau khi phan bo soTienGiam tren dong goc.
+     * Diem tich luy chua co cot phan bo trong Entity: BUS can xu ly khi du lieu day du.
+     */
     public double getThanhTienHoan() {
-
-        if (hinhThucXuLy == null) {
-            throw new IllegalStateException(
-                    "Chua chon hinh thuc xu ly");
-        }
-
-        if (hinhThucXuLy == HinhThucXuLy.HOAN_TIEN) {
-            return soLuong * donGia;
-        }
-
-        return 0;
+        if (chiTietHoaDon == null || chiTietHoaDon.getSoLuong() <= 0)
+            throw new IllegalStateException("Chưa có chi tiết hóa đơn gốc.");
+        double donGiaThucTra = chiTietHoaDon.getDonGia()
+                - chiTietHoaDon.getSoTienGiam() / chiTietHoaDon.getSoLuong();
+        return Math.max(0, soLuong * donGiaThucTra);
     }
 
     // =========================
@@ -211,7 +221,6 @@ public class ChiTietPhieuDoiTra {
                 (phieuDoiTra != null
                         ? phieuDoiTra.getMaPhieuDoiTra()
                         : "null") +
-                ", thanhTienHoan=" + getThanhTienHoan() +
                 '}';
     }
 }

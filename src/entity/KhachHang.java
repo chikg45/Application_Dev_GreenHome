@@ -44,6 +44,12 @@ public class KhachHang {
     }
 
 
+    /** Sao chep du lieu khach hang, khong sao chep danh sach don/hóa don. */
+    public KhachHang(KhachHang goc) {
+        this(java.util.Objects.requireNonNull(goc).maKH, goc.tenKH,
+                goc.sdtKH, goc.diaChi, goc.diemTichLuy);
+    }
+
     // ==================== GETTER / SETTER ====================
 
     public String getMaKH() {
@@ -51,12 +57,14 @@ public class KhachHang {
     }
 
     public void setMaKH(String maKH) {
-        if (maKH == null || maKH.trim().isEmpty()) {
+        if (maKH == null || !maKH.trim().matches("KH[0-9]{8}")) {
             throw new IllegalArgumentException(
-                "Ma khach hang khong duoc rong"
+                "Mã khách hàng phải có dạng KH00000001 (KH + 8 chữ số)."
             );
         }
 
+        if (this.maKH != null && !this.maKH.equals(maKH.trim()))
+            throw new IllegalArgumentException("Không được đổi mã khách hàng.");
         this.maKH = maKH.trim();
     }
 
@@ -65,7 +73,7 @@ public class KhachHang {
     }
 
     public void setTenKH(String tenKH) {
-        if (tenKH == null || tenKH.trim().isEmpty()) {
+        if (tenKH == null || tenKH.trim().length() < 2 || tenKH.trim().length() > 50) {
             throw new IllegalArgumentException(
                 "Ten khach hang khong duoc rong"
             );

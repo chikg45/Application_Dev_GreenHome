@@ -24,9 +24,9 @@ public class PhanCongCa {
                     "Nhan vien va ca lam viec khong duoc null");
         }
 
-        this.maPhanCong = maPhanCong;
-        this.ngayLam = ngayLam;
-        this.caLamViec = caLamViec;
+        setMaPhanCong(maPhanCong);
+        setNgayLam(ngayLam);
+        setCaLamViec(caLamViec);
 
         // Gan quan he hai chieu voi NhanVien
         setNhanVien(nhanVien);
@@ -37,6 +37,10 @@ public class PhanCongCa {
     }
 
     public void setMaPhanCong(String maPhanCong) {
+        if (maPhanCong == null || !maPhanCong.matches("PC[0-9]{3,8}"))
+            throw new IllegalArgumentException("Mã phân công phải có dạng PC001.");
+        if (this.maPhanCong != null && !this.maPhanCong.equals(maPhanCong))
+            throw new IllegalArgumentException("Không được đổi mã phân công.");
         this.maPhanCong = maPhanCong;
     }
 
@@ -45,6 +49,7 @@ public class PhanCongCa {
     }
 
     public void setNgayLam(LocalDate ngayLam) {
+        if (ngayLam == null) throw new IllegalArgumentException("Ngày làm không được null.");
         this.ngayLam = ngayLam;
     }
 

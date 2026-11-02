@@ -65,13 +65,12 @@ public class HoaDon {
     }
 
     public void setMaHD(String maHD) {
-        if (maHD == null || maHD.trim().isEmpty()) {
-            throw new IllegalArgumentException(
-                "Mã hóa đơn không được rỗng"
-            );
-        }
-
-        this.maHD = maHD.trim();
+        // Bang 4.4: HD + 8 chu so; khong doi ma sau khi tao.
+        if (maHD == null || !maHD.matches("HD[0-9]{8}"))
+            throw new IllegalArgumentException("Mã hóa đơn phải có dạng HD00000001 (HD + 8 chữ số).");
+        if (this.maHD != null && !this.maHD.equals(maHD))
+            throw new IllegalArgumentException("Không được thay đổi mã hóa đơn.");
+        this.maHD = maHD;
     }
 
     public LocalDateTime getNgayLap() {
@@ -79,9 +78,9 @@ public class HoaDon {
     }
 
     public void setNgayLap(LocalDateTime ngayLap) {
-        this.ngayLap = Objects.requireNonNull(
-            ngayLap, "Ngày lập không được null"
-        );
+        if (ngayLap == null || ngayLap.isAfter(LocalDateTime.now()))
+            throw new IllegalArgumentException("Ngày lập hóa đơn không được null hoặc trong tương lai.");
+        this.ngayLap = ngayLap;
     }
 
     public PhuongThucThanhToan getPhuongThucThanhToan() {
@@ -190,9 +189,9 @@ public class HoaDon {
             );
         }
 
-        if (!danhSachPhieuDoiTra.contains(phieu)) {
-            danhSachPhieuDoiTra.add(phieu);
-        }
+        if (phieu.getHoaDon() != this)
+            throw new IllegalArgumentException("Phiếu đổi trả không thuộc hóa đơn này.");
+        if (!danhSachPhieuDoiTra.contains(phieu)) danhSachPhieuDoiTra.add(phieu);
     }
 
     public void xoaPhieuDoiTra(PhieuDoiTra phieu) {
@@ -200,72 +199,24 @@ public class HoaDon {
     }
 
 
-    // ==================== PHƯƠNG THỨC NGHIỆP VỤ ====================
-
-    /**
-     * Tính tổng tiền hàng trước khi giảm giá.
-     *
-     * Công thức:
-     * Tổng tiền hàng = Tổng (số lượng * đơn giá)
-     */
+    /** Tong gia tri hang (gia da VAT) chua tru khuyen mai. */
     public double tinhTongTienHang() {
-
-        double tongTien = 0;
-
-        for (ChiTietHoaDon chiTiet : danhSachChiTietHoaDon) {
-
-            tongTien += chiTiet.getSoLuong()
-                    * chiTiet.getDonGia();
-        }
-
-        return tongTien;
+        double tong = 0;
+        for (ChiTietHoaDon ct : danhSachChiTietHoaDon) tong += ct.getSoLuong() * ct.getDonGia();
+        return tong;
     }
 
-    /**
-     * Tính tổng số tiền giảm giá của hóa đơn.
-     *
-     * Mỗi chi tiết hóa đơn có thuộc tính soTienGiam.
-     */
+    /** Tong soTienGiam da phan bo tren cac dong hoa don. */
     public double tinhTongTienGiamGia() {
-
-        double tongTienGiam = 0;
-
-        for (ChiTietHoaDon chiTiet : danhSachChiTietHoaDon) {
-
-            tongTienGiam += chiTiet.getSoTienGiam();
-        }
-
-        return tongTienGiam;
+        double tong = 0;
+        for (ChiTietHoaDon ct : danhSachChiTietHoaDon) tong += ct.getSoTienGiam();
+        return tong;
     }
 
-    /**
-     * Tính tổng tiền thanh toán.
-     *
-     * Tổng thanh toán = Tổng tiền hàng - Tổng giảm giá
-     */
+    /** Chua tru diem tich luy: Entity hien chua co cot diem phan bo. */
     public double tinhTongTienThanhToan() {
-
-        double tongTienThanhToan =
-                tinhTongTienHang() - tinhTongTienGiamGia();
-
-        return Math.max(0, tongTienThanhToan);
+        return Math.max(0, tinhTongTienHang() - tinhTongTienGiamGia());
     }
-
-
-    // ==================== GETTER THUỘC TÍNH DẪN XUẤT ====================
-
-    public double getTongTienHang() {
-        return tinhTongTienHang();
-    }
-
-    public double getTongTienGiamGia() {
-        return tinhTongTienGiamGia();
-    }
-
-    public double getTongTienThanhToan() {
-        return tinhTongTienThanhToan();
-    }
-
 
     // ==================== TOSTRING ====================
 
@@ -281,9 +232,6 @@ public class HoaDon {
                         : null
                 ) +
                 ", soChiTiet=" + danhSachChiTietHoaDon.size() +
-                ", tongTienHang=" + tinhTongTienHang() +
-                ", tongTienGiamGia=" + tinhTongTienGiamGia() +
-                ", tongTienThanhToan=" + tinhTongTienThanhToan() +
                 '}';
     }
 }
