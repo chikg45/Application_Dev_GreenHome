@@ -11,11 +11,10 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.text.JTextComponent;
+import util.HoTroPhimTat;
+import util.QuanLyHoanTac;
 
-/**
- * Khung giao dien Green Home - Java Swing thuan.
- * Du lieu Dashboard hien tai chi la du lieu mau, chua ket noi CSDL.
- */
 public class MainFrame extends JFrame {
 
     private static final Color BG = new Color(30, 33, 37);
@@ -34,7 +33,6 @@ public class MainFrame extends JFrame {
     private final CardLayout cardLayout = new CardLayout();
     private final JPanel cardPanel = new JPanel(cardLayout);
     private final Map<String, JButton> menuButtons = new LinkedHashMap<>();
-    // Chi khoi tao page khi nguoi dung mo trang, tranh DAO cua trang khac chan Login.
     private final Map<String, JPanel> pages = new LinkedHashMap<>();
     private final java.util.Set<String> pagesDaMo = new java.util.HashSet<>();
     private final JLabel lblPageTitle = label("Tổng quan", 17, Font.BOLD, TEXT);
@@ -48,6 +46,7 @@ public class MainFrame extends JFrame {
         setLocationRelativeTo(null);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         initComponents();
+        dangKyPhimTatToanCuc();
         showPage("Tổng quan");
     }
 
@@ -57,6 +56,254 @@ public class MainFrame extends JFrame {
         root.add(createSidebar(), BorderLayout.WEST);
         root.add(createMainArea(), BorderLayout.CENTER);
         setContentPane(root);
+    }
+
+    // ==================== PHÍM TẮT TOÀN CỤC ====================
+
+    private void dangKyPhimTatToanCuc() {
+        JRootPane root = getRootPane();
+        InputMap im = root.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+        ActionMap am = root.getActionMap();
+
+        // F1: Mở hướng dẫn theo màn hình hiện tại
+        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_F1, 0), "MO_HUONG_DAN");
+        am.put("MO_HUONG_DAN", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                moHuongDanTheoTab();
+            }
+        });
+
+        // Ctrl + Z: Hoàn tác hành động vừa làm
+        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_Z, InputEvent.CTRL_DOWN_MASK), "HOAN_TAC");
+        am.put("HOAN_TAC", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                Component focus = KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusOwner();
+                if (focus instanceof JTextComponent) {
+                    return; // Nhường Ctrl+Z mặc định khi đang gõ trong ô text
+                }
+                QuanLyHoanTac.hoanTacGanNhat(MainFrame.this);
+            }
+        });
+
+        // Ctrl + N: Thêm mới / Đơn mới
+        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_N, InputEvent.CTRL_DOWN_MASK), "THEM_MOI");
+        am.put("THEM_MOI", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                goiHanhDongTabHienTai("THEM_MOI");
+            }
+        });
+
+        // Ctrl + F: Tìm kiếm nhanh
+        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_F, InputEvent.CTRL_DOWN_MASK), "TIM_KIEM");
+        am.put("TIM_KIEM", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                goiHanhDongTabHienTai("TIM_KIEM");
+            }
+        });
+
+        // F5: Làm mới dữ liệu
+        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_F5, 0), "LAM_MOI");
+        am.put("LAM_MOI", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                goiHanhDongTabHienTai("LAM_MOI");
+            }
+        });
+
+        // Delete: Xóa dòng đang chọn (khi không đứng trong ô gõ chữ)
+        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0), "XOA_MUC");
+        am.put("XOA_MUC", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                Component focus = KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusOwner();
+                if (focus instanceof JTextComponent) {
+                    return;
+                }
+                goiHanhDongTabHienTai("XOA_MUC");
+            }
+        });
+
+        // Ctrl + S hoặc F9: Thanh toán / Xuất báo cáo / Lưu
+        KeyStroke ksSave = KeyStroke.getKeyStroke(KeyEvent.VK_S, InputEvent.CTRL_DOWN_MASK);
+        KeyStroke ksF9 = KeyStroke.getKeyStroke(KeyEvent.VK_F9, 0);
+        im.put(ksSave, "LUU_THANH_TOAN");
+        im.put(ksF9, "LUU_THANH_TOAN");
+        am.put("LUU_THANH_TOAN", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                goiHanhDongTabHienTai("LUU_THANH_TOAN");
+            }
+        });
+
+        // Ctrl + 1..9: Chuyển nhanh giữa các tab
+        String[] danhSachTab = {
+            "Tổng quan", "Bán hàng", "Khách hàng", "Sản phẩm",
+            "Khuyến mãi", "Đổi / trả", "Lịch làm việc", "Thống kê", "Nhân viên & tài khoản"
+        };
+        for (int i = 0; i < danhSachTab.length; i++) {
+            final String tenTab = danhSachTab[i];
+            int keyCode = KeyEvent.VK_1 + i;
+            im.put(KeyStroke.getKeyStroke(keyCode, InputEvent.CTRL_DOWN_MASK), "CHUYEN_TAB_" + i);
+            am.put("CHUYEN_TAB_" + i, new AbstractAction() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    if (menuButtons.containsKey(tenTab)) {
+                        showPage(tenTab);
+                    }
+                }
+            });
+        }
+    }
+
+    private void goiHanhDongTabHienTai(String hanhDong) {
+        String tabHienTai = lblPageTitle.getText();
+        JPanel page = pages.get(tabHienTai);
+        if (page == null) return;
+
+        if (page instanceof HoTroPhimTat ht) {
+            switch (hanhDong) {
+                case "THEM_MOI" -> ht.phimThemMoi();
+                case "TIM_KIEM" -> ht.phimTimKiem();
+                case "LAM_MOI" -> ht.phimLamMoi();
+                case "XOA_MUC" -> ht.phimXoa();
+                case "LUU_THANH_TOAN" -> ht.phimLuuHoacThanhToan();
+            }
+            return;
+        }
+
+        // Hỗ trợ tự động cho các tab còn lại (Bán hàng, Khách hàng, Khuyến mãi, Đổi/trả, Lịch, Thống kê)
+        switch (hanhDong) {
+            case "TIM_KIEM" -> {
+                JTextField tf = timTextFieldDauTien(page);
+                if (tf != null) {
+                    tf.requestFocusInWindow();
+                    tf.selectAll();
+                }
+            }
+            case "THEM_MOI" -> clickNutTheoTuKhoa(page, "+ ", "Thêm", "Đơn mới", "Tiếp nhận", "Phân công");
+            case "LAM_MOI" -> {
+                if (page instanceof BanHangPanel bh) bh.lamMoiDuLieu();
+                else if (page instanceof KhachHangPanel kh) kh.lamMoiTuCSDL();
+                else if (page instanceof DoiTraPanel dt) dt.lamMoiTuCSDL();
+                else if (page instanceof LichLamViecPanel lich) lich.lamMoiTuCSDL();
+                else if (page instanceof ThongKePanel tk) tk.lamMoiDuLieu();
+            }
+            case "LUU_THANH_TOAN" -> clickNutTheoTuKhoa(page, "Thanh toán", "Xuất", "Lưu");
+        }
+    }
+
+    private JTextField timTextFieldDauTien(Container root) {
+        for (Component c : root.getComponents()) {
+            if (c instanceof JTextField tf && tf.isVisible() && tf.isEditable()) {
+                return tf;
+            }
+            if (c instanceof Container child) {
+                JTextField found = timTextFieldDauTien(child);
+                if (found != null) return found;
+            }
+        }
+        return null;
+    }
+
+    private void clickNutTheoTuKhoa(Container root, String... keywords) {
+        for (Component c : root.getComponents()) {
+            if (c instanceof JButton btn && btn.isVisible() && btn.isEnabled() && btn.getText() != null) {
+                String text = btn.getText();
+                for (String kw : keywords) {
+                    if (text.contains(kw)) {
+                        btn.doClick();
+                        return;
+                    }
+                }
+            }
+            if (c instanceof Container child) {
+                clickNutTheoTuKhoa(child, keywords);
+            }
+        }
+    }
+
+    private void moHuongDanTheoTab() {
+        String tab = lblPageTitle.getText();
+        String tieuDe = "Hướng dẫn sử dụng - " + tab;
+        String noiDung = switch (tab) {
+            case "Bán hàng" -> """
+                HƯỚNG DẪN BÁN HÀNG & THANH TOÁN:
+                1. Tìm sản phẩm theo tên/mã ở khung bên trái (hoặc bấm Ctrl + F) rồi bấm [+ Thêm].
+                2. Tìm khách hàng theo SĐT ở khung trên bên phải, hoặc bấm [Khách vãng lai] / [+ Khách mới].
+                3. Điều chỉnh số lượng (+/-) trong giỏ hàng; nếu lỡ xóa nhầm món, bấm Ctrl + Z để khôi phục.
+                4. Tích chọn dùng điểm tích lũy (nếu có), sau đó bấm [Thanh toán] (hoặc Ctrl + S / F9) để xuất hóa đơn.
+                """;
+            case "Khách hàng" -> """
+                HƯỚNG DẪN QUẢN LÝ KHÁCH HÀNG:
+                1. Bấm [+ Thêm khách hàng] (hoặc Ctrl + N) để tạo hồ sơ khách hàng mới.
+                2. Nhập tên hoặc SĐT vào ô tìm kiếm (Ctrl + F) để tra cứu nhanh.
+                3. Bấm [Xem] trên từng dòng để xem chi tiết lịch sử hóa đơn và điểm tích lũy, hoặc [Sửa] để cập nhật.
+                """;
+            case "Sản phẩm" -> """
+                HƯỚNG DẪN QUẢN LÝ SẢN PHẨM:
+                1. Bấm [+ Thêm sản phẩm] (Ctrl + N) để thêm mặt hàng mới, hoặc [Nhập Excel] / [Cộng tồn Excel] để nhập hàng loạt.
+                2. Chọn 1 dòng trên bảng để [Sửa], [Xóa] (phím Delete) hoặc [Ngừng / Mở lại kinh doanh].
+                3. Nếu lỡ xóa nhầm, sửa nhầm hoặc ngừng bán nhầm sản phẩm: click ra vùng bảng và bấm Ctrl + Z để hoàn tác ngay lập tức.
+                """;
+            case "Khuyến mãi" -> """
+                HƯỚNG DẪN QUẢN LÝ KHUYẾN MÃI:
+                1. Bấm [+ Thêm khuyến mãi] (Ctrl + N), thiết lập mức giảm (% hoặc số tiền), thời gian áp dụng và chọn danh sách sản phẩm.
+                2. Chọn chương trình trên bảng để [Xem chi tiết], [Sửa] hoặc [Xóa].
+                """;
+            case "Đổi / trả" -> """
+                HƯỚNG DẪN XỬ LÝ ĐỔI / TRẢ HÀNG (TRONG 7 NGÀY):
+                1. Nhân viên bấm [+ Tiếp nhận đổi / trả] (Ctrl + N), tìm hóa đơn gốc còn trong hạn 7 ngày.
+                2. Chọn sản phẩm cần đổi/trả, nhập lý do, tình trạng sản phẩm và gửi Quản lý phê duyệt.
+                3. Quản lý mở phiếu ở trạng thái Chờ duyệt để bấm [Phê duyệt] hoặc [Từ chối].
+                """;
+            case "Lịch làm việc" -> """
+                HƯỚNG DẪN LỊCH LÀM VIỆC:
+                1. Dùng nút [‹], [›] hoặc [Tuần này] để chuyển tuần xem lịch phân công.
+                2. Quản lý bấm [+ Phân công ca] (Ctrl + N) hoặc bấm dấu [+] ngay tại ô ngày của nhân viên để xếp ca Sáng / Chiều / Tối.
+                """;
+            case "Thống kê" -> """
+                HƯỚNG DẪN THỐNG KÊ DOANH THU:
+                1. Chọn khoảng thời gian Từ ngày – Đến ngày và bấm [Áp dụng] (hoặc [Tháng này]).
+                2. Chuyển đổi giữa các tab Doanh thu, Sản phẩm bán chạy, Đổi/trả để xem biểu đồ.
+                3. Bấm [Xuất CSV] (hoặc Ctrl + S) để lưu báo cáo ra file.
+                """;
+            case "Nhân viên & tài khoản" -> """
+                HƯỚNG DẪN QUẢN LÝ NHÂN VIÊN & TÀI KHOẢN:
+                1. Bấm [+ Thêm nhân viên] (Ctrl + N) để tạo hồ sơ và cấp tài khoản đăng nhập (mật khẩu mặc định 123456).
+                2. Bấm [Sửa] để cập nhật thông tin, vai trò hoặc trạng thái làm việc.
+                3. Bấm [Khóa / Mở khóa] để tạm ngừng quyền đăng nhập. Nếu lỡ khóa hoặc sửa nhầm, bấm Ctrl + Z để hoàn tác.
+                """;
+            default -> """
+                HƯỚNG DẪN SỬ DỤNG CHUNG - GREEN HOME:
+                • Chuyển nhanh giữa các chức năng: Ctrl + 1 đến Ctrl + 9
+                • Thêm mới dữ liệu ở màn hình đang mở: Ctrl + N
+                • Đưa con trỏ vào ô tìm kiếm: Ctrl + F
+                • Tải lại dữ liệu mới nhất từ SQL Server: F5
+                • Xóa mục đang chọn: Delete
+                • Thanh toán / Xuất báo cáo: Ctrl + S hoặc F9
+                • Hoàn tác thao tác vừa làm (xóa/sửa/khóa nhầm): Ctrl + Z
+                • Xem hướng dẫn của từng màn hình: F1
+                """;
+        };
+
+        JTextArea area = new JTextArea(noiDung);
+        area.setEditable(false);
+        area.setLineWrap(true);
+        area.setWrapStyleWord(true);
+        area.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        area.setBackground(new Color(28, 31, 36));
+        area.setForeground(TEXT);
+        area.setBorder(new EmptyBorder(12, 14, 12, 14));
+
+        JScrollPane scroll = new JScrollPane(area);
+        scroll.setPreferredSize(new Dimension(540, 260));
+        scroll.setBorder(BorderFactory.createLineBorder(BORDER));
+
+        JOptionPane.showMessageDialog(this, scroll, tieuDe, JOptionPane.INFORMATION_MESSAGE);
     }
 
     // ==================== SIDEBAR ====================
@@ -99,22 +346,8 @@ public class MainFrame extends JFrame {
         JPanel footer = vertical();
         footer.setBorder(new EmptyBorder(6, 11, 15, 11));
 
-        RoundedPanel today = rounded(new Color(29, 31, 35), BORDER, 12);
-        today.setLayout(new BorderLayout(8, 0));
-        today.setBorder(new EmptyBorder(10, 9, 10, 9));
-        today.setMaximumSize(new Dimension(Integer.MAX_VALUE, 59));
-        today.add(new JLabel(new UiIcon("calendar", MUTED, 17)), BorderLayout.WEST);
-        JPanel todayText = vertical();
-        todayText.add(label("Lịch hôm nay", 11, Font.BOLD, TEXT));
-        todayText.add(Box.createVerticalStrut(3));
-        todayText.add(label("Chưa có dữ liệu phân công", 9, Font.PLAIN, MUTED));
-        today.add(todayText, BorderLayout.CENTER);
-        today.setAlignmentX(Component.LEFT_ALIGNMENT);
-        footer.add(today);
-        footer.add(Box.createVerticalStrut(10));
-
-        footer.add(footerButton("Quy trình nghiệp vụ", "help", () -> info("Quy trình nghiệp vụ")));
-        footer.add(footerButton("Nhật ký thao tác", "history", () -> info("Nhật ký thao tác")));
+        // Thay thế cụm Lịch hôm nay / Quy trình nghiệp vụ / Nhật ký thao tác bằng nút Hướng dẫn
+        footer.add(footerButton("Hướng dẫn sử dụng (F1)", "help", this::moHuongDanTheoTab));
         footer.add(Box.createVerticalStrut(10));
         JSeparator line = new JSeparator();
         line.setForeground(BORDER);
@@ -178,26 +411,22 @@ public class MainFrame extends JFrame {
     }
 
     private JPanel footerButton(String text, String icon, Runnable action) {
-        JButton button = new JButton(text, new UiIcon(icon, MUTED, 15));
-
+        JButton button = new JButton(text, new UiIcon(icon, new Color(164, 195, 251), 15));
         button.setHorizontalAlignment(SwingConstants.LEFT);
         button.setIconTextGap(10);
-        button.setFont(new Font("SansSerif", Font.PLAIN, 11));
-        button.setForeground(MUTED);
+        button.setFont(new Font("SansSerif", Font.BOLD, 11));
+        button.setForeground(new Color(164, 195, 251));
         button.setFocusPainted(false);
         button.setContentAreaFilled(false);
-        button.setBorder(new EmptyBorder(8, 4, 8, 0));
-
+        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        button.setBorder(new EmptyBorder(8, 6, 8, 6));
         button.addActionListener(e -> action.run());
 
-        // Căn nút về bên trái Sidebar
-        JPanel row = new JPanel(new BorderLayout());
-        row.setOpaque(false);
+        RoundedPanel row = rounded(new Color(27, 34, 46), new Color(48, 64, 92), 10);
+        row.setLayout(new BorderLayout());
         row.setAlignmentX(Component.LEFT_ALIGNMENT);
-        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
-
-        row.add(button, BorderLayout.WEST);
-
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
+        row.add(button, BorderLayout.CENTER);
         return row;
     }
 
@@ -249,9 +478,10 @@ public class MainFrame extends JFrame {
         greeting.add(Box.createVerticalStrut(6));
         greeting.add(label("Theo dõi hoạt động cửa hàng và các công việc cần xử lý.", 12, Font.PLAIN, MUTED));
         welcome.add(greeting, BorderLayout.WEST);
+
+        // Đã bỏ nút "Quy trình nghiệp vụ" ở góc trên bên phải
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 7, 0));
         actions.setOpaque(false);
-        actions.add(smallButton("Quy trình nghiệp vụ", "help", () -> info("Quy trình nghiệp vụ")));
         actions.add(primaryButton("Bán hàng", "cart", () -> {
             if (menuButtons.containsKey("Bán hàng")) showPage("Bán hàng");
             else info("Bán hàng - chỉ dành cho nhân viên bán hàng");
@@ -294,11 +524,10 @@ public class MainFrame extends JFrame {
         JPanel end = new JPanel(new BorderLayout());
         end.setOpaque(false);
         end.add(label("Green Home · Giao diện mô phỏng", 10, Font.PLAIN, MUTED), BorderLayout.WEST);
-        end.add(label("Dữ liệu chưa đồng bộ từ SQL Server", 10, Font.PLAIN, MUTED), BorderLayout.EAST);
+        end.add(label("Nhấn F1 để xem hướng dẫn & phím tắt", 10, Font.PLAIN, MUTED), BorderLayout.EAST);
         end.setMaximumSize(new Dimension(Integer.MAX_VALUE, 20));
         content.add(end);
 
-        // GridBagLayout giu Dashboard o giua khi man hinh rong, khong lech ve Sidebar.
         JPanel centered = new JPanel(new GridBagLayout());
         centered.setBackground(BG);
         GridBagConstraints gbc = new GridBagConstraints();
@@ -321,7 +550,6 @@ public class MainFrame extends JFrame {
     private JPanel dashboardRow(JPanel left, JPanel right, double leftRatio) {
         JPanel row = new JPanel(new GridBagLayout());
         row.setOpaque(false);
-        // Chia do rong theo weightx, tranh JPanel con ep rong cot phai.
         left.setPreferredSize(new Dimension(0, 210));
         right.setPreferredSize(new Dimension(0, 210));
         left.setMinimumSize(new Dimension(0, 0));
@@ -398,13 +626,12 @@ public class MainFrame extends JFrame {
     }
 
     private JPanel recentCard() {
-
-    	RoundedPanel card = section(
-    		    "Giao dịch gần đây",
-    		    "Hóa đơn mẫu đã thanh toán",
-    		    "Tra cứu",
-    		    () -> HoaDonDialog.moDanhSach(this)
-    		);
+        RoundedPanel card = section(
+                "Giao dịch gần đây",
+                "Hóa đơn mẫu đã thanh toán",
+                "Tra cứu",
+                () -> HoaDonDialog.moDanhSach(this)
+        );
         String[] columns = {
             "Hóa đơn",
             "Khách hàng",
@@ -425,7 +652,6 @@ public class MainFrame extends JFrame {
         };
 
         JTable table = new JTable(model);
-
         table.setRowHeight(37);
         table.setShowGrid(false);
         table.setBackground(CARD);
@@ -434,73 +660,49 @@ public class MainFrame extends JFrame {
         table.setSelectionForeground(TEXT);
         table.setFont(new Font("SansSerif", Font.PLAIN, 11));
         table.setFillsViewportHeight(true);
-
         table.getTableHeader().setReorderingAllowed(false);
         table.getTableHeader().setPreferredSize(new Dimension(0, 32));
 
-        // Căn lề tiêu đề các cột
-        DefaultTableCellRenderer headerRenderer =
-                new DefaultTableCellRenderer() {
-
+        DefaultTableCellRenderer headerRenderer = new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(
                     JTable t, Object value,
                     boolean selected, boolean focus,
                     int row, int column) {
-
-                super.getTableCellRendererComponent(
-                    t, value, selected, focus, row, column
-                );
-
+                super.getTableCellRendererComponent(t, value, selected, focus, row, column);
                 setBorder(new EmptyBorder(5, 12, 5, 6));
                 setBackground(new Color(28, 30, 33));
                 setForeground(MUTED);
                 setFont(new Font("SansSerif", Font.BOLD, 10));
-
                 return this;
             }
         };
-
         table.getTableHeader().setDefaultRenderer(headerRenderer);
 
-        // Căn lề nội dung của từng ô
-        DefaultTableCellRenderer cellRenderer =
-                new DefaultTableCellRenderer() {
-
+        DefaultTableCellRenderer cellRenderer = new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(
                     JTable t, Object value,
                     boolean selected, boolean focus,
                     int row, int column) {
-
-                super.getTableCellRendererComponent(
-                    t, value, selected, focus, row, column
-                );
-
+                super.getTableCellRendererComponent(t, value, selected, focus, row, column);
                 setBorder(new EmptyBorder(0, 12, 0, 6));
-
                 return this;
             }
         };
-
         for (int i = 0; i < table.getColumnCount(); i++) {
-            table.getColumnModel()
-                 .getColumn(i)
-                 .setCellRenderer(cellRenderer);
+            table.getColumnModel().getColumn(i).setCellRenderer(cellRenderer);
         }
 
         JScrollPane scroll = new JScrollPane(table);
         scroll.setBorder(null);
         scroll.getViewport().setBackground(CARD);
 
-        // Tạo khoảng cách giữa bảng và viền Card
         JPanel tableArea = new JPanel(new BorderLayout());
         tableArea.setOpaque(false);
         tableArea.setBorder(new EmptyBorder(0, 8, 0, 8));
-
         tableArea.add(scroll, BorderLayout.CENTER);
         card.add(tableArea, BorderLayout.CENTER);
-
         return card;
     }
 
@@ -632,7 +834,6 @@ public class MainFrame extends JFrame {
     }
 
     private void showPage(String name) {
-        // Bam lai dung muc dang mo khong duoc tinh la chuyen tab.
         boolean vuaChuyenTab = !name.equals(lblPageTitle.getText());
         if (!menuButtons.containsKey(name)) {
             info("Trang " + name + " chưa có trong menu của vai trò này");
@@ -651,7 +852,6 @@ public class MainFrame extends JFrame {
                 return;
             }
         }
-        // Khong de trang nhan vien/lich bi stale khi quay lai tu menu.
         try {
             JPanel page = pages.get(name);
             if (page instanceof NhanVienPanel nv) nv.lamMoiTuCSDL();
@@ -664,13 +864,12 @@ public class MainFrame extends JFrame {
         }
         cardLayout.show(cardPanel, name);
         lblPageTitle.setText(name);
-        // Tai lai ton kho moi tu SQL va canh bao moi lan CHUYEN sang tab San pham.
         if (vuaChuyenTab && pages.get(name) instanceof SanPhamPanel sp) {
             sp.canhBaoTonKhiMoTrang();
         }
         for (Component panel : cardPanel.getComponents()) {
-            if (panel.isVisible() && panel instanceof BanHangPanel) ((BanHangPanel)panel).lamMoiDuLieu();
-            if (panel.isVisible() && panel instanceof ThongKePanel) ((ThongKePanel)panel).lamMoiDuLieu();
+            if (panel.isVisible() && panel instanceof BanHangPanel) ((BanHangPanel) panel).lamMoiDuLieu();
+            if (panel.isVisible() && panel instanceof ThongKePanel) ((ThongKePanel) panel).lamMoiDuLieu();
         }
         for (Map.Entry<String, JButton> entry : menuButtons.entrySet()) {
             boolean selected = entry.getKey().equals(name);
@@ -707,13 +906,14 @@ public class MainFrame extends JFrame {
         int result = JOptionPane.showConfirmDialog(this, "Bạn có muốn đăng xuất không?",
                 "Xác nhận đăng xuất", JOptionPane.YES_NO_OPTION);
         if (result == JOptionPane.YES_OPTION) {
+            QuanLyHoanTac.xoaLichSu();
             util.PhienDangNhap.ketThuc();
             new LoginFrame().setVisible(true);
             dispose();
         }
     }
 
-    // ==================== VE THU CONG (KHONG THU VIEN NGOAI) ====================
+    // ==================== VE THU CONG ====================
 
     private static class RoundedPanel extends JPanel {
         private final Color background;
@@ -881,9 +1081,6 @@ public class MainFrame extends JFrame {
         }
     }
 
- // true: Quản lý | false: Nhân viên bán hàng
- //Giao dien nv:
- //new MainFrame("Nguyễn Văn A", false).setVisible(true);
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> new LoginFrame().setVisible(true));
     }

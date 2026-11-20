@@ -4,7 +4,10 @@ import bus.NhanVienBUS;
 import entity.NhanVien;
 import entity.TaiKhoan;
 import entity.VaiTro;
+import util.HoTroPhimTat;
 import util.PhienDangNhap;
+import util.QuanLyHoanTac;
+
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -15,8 +18,6 @@ import java.time.format.ResolverStyle;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.nio.file.Path;
-import java.util.concurrent.ExecutionException;
 import javax.swing.*;
 import javax.swing.border.*;
 import javax.swing.event.DocumentEvent;
@@ -25,7 +26,7 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 
 /** UI-11: Quản lý nhân viên, tài khoản qua BUS/DAO/SQL Server. */
-public class NhanVienPanel extends JPanel {
+public class NhanVienPanel extends JPanel implements HoTroPhimTat {
 
     private static final Color BG = new Color(30, 33, 37);
     private static final Color CARD = new Color(18, 19, 21);
@@ -70,15 +71,31 @@ public class NhanVienPanel extends JPanel {
         lamMoiTuCSDL();
     }
 
+    @Override
+    public void phimThemMoi() {
+        moForm(null);
+    }
+
+    @Override
+    public void phimTimKiem() {
+        txtTim.requestFocusInWindow();
+        txtTim.selectAll();
+    }
+
+    @Override
+    public void phimLamMoi() {
+        lamMoiTuCSDL();
+    }
+
     /** Dữ liệu nạp lại từ SQL, không còn lưu mẫu trong RAM. */
     public void lamMoiTuCSDL() {
         nhanViens.clear();
         for (NhanVien nv : bus.layTatCa()) {
             TaiKhoan tk = nv.getTaiKhoan();
             nhanViens.add(new DongNhanVien(nv.getMaNV(), nv.getHoTen(), nv.getSdtNV(),
-                    nv.getSoCCCD(),nv.getNgaySinh(),nv.getNgayVaoLam(),
+                    nv.getSoCCCD(), nv.getNgaySinh(), nv.getNgayVaoLam(),
                     tk != null && tk.getVaiTro() == VaiTro.QUAN_LY ? "Quản lý" : "Nhân viên bán hàng",
-                    tk == null ? "" : tk.getTenDangNhap(), nv.getDiaChi()==null ? "" : nv.getDiaChi(),
+                    tk == null ? "" : tk.getTenDangNhap(), nv.getDiaChi() == null ? "" : nv.getDiaChi(),
                     nv.isDangLamViec(), tk != null && tk.isDangHoatDong()));
         }
         taiDanhSach();
@@ -99,14 +116,13 @@ public class NhanVienPanel extends JPanel {
         titles.add(Box.createVerticalStrut(5));
         titles.add(text("Quản lý hồ sơ, phân quyền và trạng thái truy cập của nhân viên.", 11, Font.PLAIN, MUTED));
         heading.add(titles, BorderLayout.WEST);
+
+        // Đã bỏ nút Nhập Excel, chỉ giữ nút + Thêm nhân viên
         JButton btnThem = button("+  Thêm nhân viên", true);
+        btnThem.setToolTipText("Thêm nhân viên mới (Ctrl + N)");
         btnThem.addActionListener(e -> moForm(null));
-        JButton btnExcel = button("Nhập Excel", false);
-        btnExcel.setToolTipText("Tạo hàng loạt hồ sơ nhân viên + tài khoản từ file Excel .xlsx");
-        btnExcel.addActionListener(e -> nhapExcelNhanVien(btnExcel));
         JPanel tools = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         tools.setOpaque(false);
-        tools.add(btnExcel);
         tools.add(btnThem);
         heading.add(tools, BorderLayout.EAST);
         top.add(heading, BorderLayout.NORTH);
@@ -127,7 +143,7 @@ public class NhanVienPanel extends JPanel {
         filters.setBackground(CARD);
         styleInput(txtTim);
         txtTim.setPreferredSize(new Dimension(280, 36));
-        txtTim.setToolTipText("Tìm họ tên, mã, SĐT hoặc tài khoản");
+        txtTim.setToolTipText("Tìm họ tên, mã, SĐT hoặc tài khoản (Ctrl + F)");
         styleCombo(cboVaiTro);
         styleCombo(cboTrangThai);
         filters.add(txtTim);
@@ -251,74 +267,25 @@ public class NhanVienPanel extends JPanel {
             JOptionPane.showMessageDialog(this, "Nhân viên đã nghỉ. Cập nhật trạng thái làm việc trước.");
             return;
         }
-        String action = nv.choPhepTruyCap ? "Khóa" : "Mở khóa";
+        boolean trangThaiCu = nv.choPhepTruyCap;
+        String action = trangThaiCu ? "Khóa" : "Mở khóa";
         int confirm = JOptionPane.showConfirmDialog(this,
                 action + " tài khoản " + nv.tenDangNhap + "?\nHồ sơ và lịch sử giao dịch vẫn được giữ nguyên.",
                 "Xác nhận", JOptionPane.YES_NO_OPTION);
         if (confirm != JOptionPane.YES_OPTION) return;
         try {
-            if (!bus.khoaMoTaiKhoan(nv.ma, !nv.choPhepTruyCap))
+            if (!bus.khoaMoTaiKhoan(nv.ma, !trangThaiCu))
                 throw new IllegalArgumentException("Không tìm thấy tài khoản.");
+
+            QuanLyHoanTac.ghiNhan(
+                (trangThaiCu ? "Mở lại" : "Khóa lại") + " tài khoản " + nv.tenDangNhap,
+                () -> bus.khoaMoTaiKhoan(nv.ma, trangThaiCu),
+                this::lamMoiTuCSDL
+            );
             lamMoiTuCSDL();
         } catch (RuntimeException ex) {
             warning(this, ex.getMessage());
         }
-    }
-
-    // Dùng một form cho cả thêm và sửa.
-    /** Import nhan vien + tai khoan: preview va rollback toan bo neu co loi. */
-    private void nhapExcelNhanVien(JButton btnExcel) {
-        JFileChooser chooser = new JFileChooser();
-        chooser.setDialogTitle("Chọn file Excel nhân viên theo mẫu Green Home");
-        chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("Excel (*.xlsx)", "xlsx"));
-        if (chooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) return;
-        Path file = chooser.getSelectedFile().toPath();
-        btnExcel.setEnabled(false);
-        new SwingWorker<List<NhanVien>, Void>() {
-            @Override protected List<NhanVien> doInBackground() { return bus.docExcel(file); }
-            @Override protected void done() {
-                btnExcel.setEnabled(true);
-                try {
-                    List<NhanVien> ds = get();
-                    StringBuilder xemTruoc = new StringBuilder("File: " + file.getFileName()
-                            + "\n" + ds.size() + " nhân viên hợp lệ. Chưa ghi CSDL.\n\n");
-                    for (int i=0; i<Math.min(8, ds.size()); i++) {
-                        NhanVien nv = ds.get(i);
-                        xemTruoc.append(nv.getHoTen()).append(" | ")
-                                .append(nv.getTaiKhoan().getTenDangNhap()).append(" | ")
-                                .append(nv.getTaiKhoan().getVaiTro()).append("\n");
-                    }
-                    if (ds.size()>8) xemTruoc.append("... và ").append(ds.size()-8).append(" nhân viên khác.\n");
-                    xemTruoc.append("\nHệ thống tự sinh mã NV/TK, băm PBKDF2 mật khẩu demo 123456."
-                            + "\nNếu một dòng lỗi, toàn bộ giao dịch được rollback."
-                            + "\nXác nhận import?");
-                    if (JOptionPane.showConfirmDialog(NhanVienPanel.this, xemTruoc.toString(),
-                            "Import nhân viên", JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION) return;
-                    btnExcel.setEnabled(false);
-                    new SwingWorker<Integer, Void>() {
-                        @Override protected Integer doInBackground() { return bus.nhapExcel(ds); }
-                        @Override protected void done() {
-                            btnExcel.setEnabled(true);
-                            try {
-                                int count = get();
-                                lamMoiTuCSDL();
-                                JOptionPane.showMessageDialog(NhanVienPanel.this,
-                                        "Đã tạo " + count + " nhân viên và " + count
-                                                + " tài khoản trong SQL Server.",
-                                        "Import thành công", JOptionPane.INFORMATION_MESSAGE);
-                            } catch (Exception e) { loiImport(e); }
-                        }
-                    }.execute();
-                } catch (Exception e) { loiImport(e); }
-            }
-        }.execute();
-    }
-
-    private void loiImport(Throwable err) {
-        Throwable c=err;
-        while (c.getCause()!=null && (c instanceof ExecutionException
-                || c instanceof java.util.concurrent.CompletionException)) c=c.getCause();
-        warning(this, c.getMessage()==null ? c.toString() : c.getMessage());
     }
 
     private void moForm(DongNhanVien nvCu) {
@@ -437,25 +404,47 @@ public class NhanVienPanel extends JPanel {
             }
             try {
                 NhanVien data = new NhanVien();
-                if (nvCu != null) data.setMaNV(nvCu.ma);
+                NhanVien snapshotCu = null;
+                if (nvCu != null) {
+                    data.setMaNV(nvCu.ma);
+                    snapshotCu = bus.timTheoMa(nvCu.ma);
+                }
                 data.setHoTen(hoTen); data.setSdtNV(phone); data.setSoCCCD(id);
                 data.setNgaySinh(birth); data.setNgayVaoLam(joined);
                 data.setDiaChi(diaChi.getText().trim()); data.setDangLamViec(dangLam.isSelected());
                 TaiKhoan tk = new TaiKhoan();
                 if (nvCu != null) {
-                    NhanVien hienCo = bus.timTheoMa(nvCu.ma);
-                    if (hienCo == null || hienCo.getTaiKhoan() == null)
+                    if (snapshotCu == null || snapshotCu.getTaiKhoan() == null)
                         throw new IllegalArgumentException("Không tìm thấy tài khoản cần sửa.");
-                    tk.setMaTK(hienCo.getTaiKhoan().getMaTK());
+                    tk.setMaTK(snapshotCu.getTaiKhoan().getMaTK());
                 }
                 tk.setTenDangNhap(user);
                 tk.setVaiTro("Quản lý".equals(vaiTro.getSelectedItem())
                         ? VaiTro.QUAN_LY : VaiTro.NHAN_VIEN_BAN_HANG);
                 tk.setDangHoatDong(dangLam.isSelected() && truyCap.isSelected());
                 data.setTaiKhoan(tk);
-                if (nvCu == null) bus.themNhanVien(data);
-                else if (!bus.capNhatNhanVien(data))
-                    throw new IllegalArgumentException("Không tìm thấy hồ sơ cần cập nhật.");
+
+                if (nvCu == null) {
+                    NhanVien daTao = bus.themNhanVien(data);
+                    QuanLyHoanTac.ghiNhan(
+                        "Ngừng kích hoạt nhân viên vừa thêm " + daTao.getMaNV(),
+                        () -> {
+                            daTao.setDangLamViec(false);
+                            daTao.getTaiKhoan().setDangHoatDong(false);
+                            bus.capNhatNhanVien(daTao);
+                        },
+                        this::lamMoiTuCSDL
+                    );
+                } else {
+                    if (!bus.capNhatNhanVien(data))
+                        throw new IllegalArgumentException("Không tìm thấy hồ sơ cần cập nhật.");
+                    final NhanVien banLuuCu = snapshotCu;
+                    QuanLyHoanTac.ghiNhan(
+                        "Khôi phục thông tin nhân viên " + banLuuCu.getMaNV(),
+                        () -> bus.capNhatNhanVien(banLuuCu),
+                        this::lamMoiTuCSDL
+                    );
+                }
                 lamMoiTuCSDL();
             } catch (RuntimeException ex) {
                 warning(dialog, ex.getMessage());

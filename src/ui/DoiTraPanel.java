@@ -205,38 +205,6 @@ public class DoiTraPanel extends JPanel {
 
         addRow(top, heading, 52);
 
-        // Thanh quy trình
-        JPanel progress = card(
-            new GridLayout(1, 4, 5, 0)
-        );
-
-        String[] steps = {
-            "① Nhân viên tiếp nhận",
-            "② Quản lý phê duyệt",
-            "③ Đổi hàng / hoàn tiền",
-            "④ Đánh giá hàng nhận lại"
-        };
-
-        for (String step : steps) {
-
-            JLabel l = label(
-                step, 11, MUTED, Font.PLAIN
-            );
-
-            l.setHorizontalAlignment(
-                SwingConstants.CENTER
-            );
-
-            progress.add(l);
-        }
-
-        progress.setBorder(new CompoundBorder(
-            new LineBorder(BORDER),
-            new EmptyBorder(12, 7, 12, 7)
-        ));
-
-        addRow(top, progress, 48);
-
         // Bốn thẻ thống kê
         JPanel stats = new JPanel(
             new GridLayout(1, 3, 12, 0)
