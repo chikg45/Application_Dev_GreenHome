@@ -85,26 +85,47 @@ public class NhanVienDAO {
         }
     }
 
+    /** Mot giao dich cho 1 nhan vien va tai khoan. */
     public NhanVien them(String maQuanLy, NhanVien nv, TaiKhoan tk) {
         return Jdbc.giaoDich(nguon, c -> {
             yeuCauQuanLy(c, maQuanLy);
             c.setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE);
-            String maNV = maMoi(c, "NhanVien", "maNV", "NV");
-            String maTK = maMoi(c, "TaiKhoan", "maTK", "TK");
-            try (PreparedStatement p = c.prepareStatement("INSERT INTO dbo.NhanVien "
-                    + "(maNV,hoTen,sdtNV,soCCCD,ngaySinh,ngayVaoLam,diaChi,dangLamViec) "
-                    + "VALUES(?,?,?,?,?,?,?,?)")) {
-                p.setString(1, maNV); p.setString(2, nv.getHoTen()); p.setString(3, nv.getSdtNV());
-                p.setString(4, nv.getSoCCCD()); p.setDate(5, java.sql.Date.valueOf(nv.getNgaySinh()));
-                p.setDate(6, java.sql.Date.valueOf(nv.getNgayVaoLam())); p.setString(7, nv.getDiaChi());
-                p.setBoolean(8, nv.isDangLamViec()); p.executeUpdate();
-            }
-            tk.setMaTK(maTK);
-            tk.setDangHoatDong(nv.isDangLamViec() && tk.isDangHoatDong());
-            taiKhoanDAO.them(c, tk, maNV);
-            nv.setMaNV(maNV); nv.setTaiKhoan(tk); tk.setNhanVien(nv);
-            return nv;
+            return themTrongGiaoDich(c, nv, tk);
         });
+    }
+
+    /** Import nhieu nhan vien, rollback tat ca neu bat ky TaiKhoan/CCCD/SĐT nao bi trung. */
+    public int themHangLoat(String maQuanLy, List<NhanVien> danhSach) {
+        if (danhSach == null || danhSach.isEmpty())
+            throw new IllegalArgumentException("Danh sách nhân viên import trống.");
+        return Jdbc.giaoDich(nguon, c -> {
+            yeuCauQuanLy(c, maQuanLy);
+            c.setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE);
+            for (NhanVien nv : danhSach) {
+                if (nv.getTaiKhoan() == null)
+                    throw new IllegalArgumentException("Nhân viên thiếu tài khoản.");
+                themTrongGiaoDich(c, nv, nv.getTaiKhoan());
+            }
+            return danhSach.size();
+        });
+    }
+
+    private NhanVien themTrongGiaoDich(Connection c, NhanVien nv, TaiKhoan tk) throws SQLException {
+        String maNV = maMoi(c, "NhanVien", "maNV", "NV");
+        String maTK = maMoi(c, "TaiKhoan", "maTK", "TK");
+        try (PreparedStatement p = c.prepareStatement("INSERT INTO dbo.NhanVien "
+                + "(maNV,hoTen,sdtNV,soCCCD,ngaySinh,ngayVaoLam,diaChi,dangLamViec) "
+                + "VALUES(?,?,?,?,?,?,?,?)")) {
+            p.setString(1, maNV); p.setString(2, nv.getHoTen()); p.setString(3, nv.getSdtNV());
+            p.setString(4, nv.getSoCCCD()); p.setDate(5, java.sql.Date.valueOf(nv.getNgaySinh()));
+            p.setDate(6, java.sql.Date.valueOf(nv.getNgayVaoLam())); p.setString(7, nv.getDiaChi());
+            p.setBoolean(8, nv.isDangLamViec()); p.executeUpdate();
+        }
+        tk.setMaTK(maTK);
+        tk.setDangHoatDong(nv.isDangLamViec() && tk.isDangHoatDong());
+        taiKhoanDAO.them(c, tk, maNV);
+        nv.setMaNV(maNV); nv.setTaiKhoan(tk);
+        return nv;
     }
     public boolean capNhat(String maQuanLy, NhanVien nv) {
         return Jdbc.giaoDich(nguon, c -> {

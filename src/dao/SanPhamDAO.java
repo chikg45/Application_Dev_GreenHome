@@ -15,6 +15,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /** JDBC cho dbo.SanPham; danh muc Java la enum, SQL la FK dbo.DanhMuc. */
 public class SanPhamDAO {
@@ -135,6 +136,66 @@ public class SanPhamDAO {
                     BigDecimal.valueOf(sp.getGiaNiemYet()), sp.getModel(), sp.getDonViTinh(),
                     sp.getMoTaSP(), sp.getTinhTrang().getGiaTriCSDL(), sp.getSoLuongTon(),
                     sp.getSoLuongLoi(), sp.getSoLuongTonToiThieu(), sp.getHinhAnh()) == 1;
+        });
+    }
+
+    /** Them moi hang loat; neu co dong loi thi rollback tat ca, khong ghi mot phan. */
+    public int themHangLoat(String maNVDangNhap, List<SanPham> danhSach) {
+        if (danhSach == null || danhSach.isEmpty())
+            throw new IllegalArgumentException("Danh sách import trống.");
+        return Jdbc.giaoDich(nguon, c -> {
+            yeuCauQuanLy(c, maNVDangNhap);
+            ganNguoiThaoTac(c, maNVDangNhap);
+            String sql = "INSERT INTO dbo.SanPham "
+                    + "(maSP, tenSP, maDM, maTH, thongSoKyThuat, giaNiemYet, model, "
+                    + "donViTinh, moTaSP, tinhTrang, soLuongTon, soLuongLoi, "
+                    + "soLuongTonToiThieu, hinhAnh) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            try (PreparedStatement ps = c.prepareStatement(sql)) {
+                for (SanPham p : danhSach) {
+                    p.capNhatTinhTrang();
+                    ps.setString(1, p.getMaSP()); ps.setString(2, p.getTenSP());
+                    ps.setString(3, maDanhMuc(p.getDanhMuc()));
+                    ps.setString(4, p.getThuongHieu().getMaThuongHieu());
+                    ps.setString(5, p.getThongSoKyThuat());
+                    ps.setBigDecimal(6, BigDecimal.valueOf(p.getGiaNiemYet()));
+                    ps.setString(7, p.getModel()); ps.setString(8, p.getDonViTinh());
+                    ps.setString(9, p.getMoTaSP());
+                    ps.setString(10, p.getTinhTrang().getGiaTriCSDL());
+                    ps.setInt(11, p.getSoLuongTon()); ps.setInt(12, p.getSoLuongLoi());
+                    ps.setInt(13, p.getSoLuongTonToiThieu()); ps.setString(14, p.getHinhAnh());
+                    ps.addBatch();
+                }
+                int[] updated = ps.executeBatch();
+                if (updated.length != danhSach.size())
+                    throw new SQLException("Số bản ghi được xử lý không khớp số dòng Excel.");
+                for (int n : updated) if (n == 0 || n == java.sql.Statement.EXECUTE_FAILED)
+                    throw new SQLException("Có dòng INSERT sản phẩm không thành công.");
+            }
+            return danhSach.size();
+        });
+    }
+
+    /** Cong ton bang UPDATE co dieu kien; giu NgungBan, cac trang thai con lai tu phuc hoi. */
+    public int congTonHangLoat(String maNVDangNhap, Map<String, Integer> soLuong) {
+        if (soLuong == null || soLuong.isEmpty())
+            throw new IllegalArgumentException("Danh sách nhập thêm tồn kho trống.");
+        return Jdbc.giaoDich(nguon, c -> {
+            yeuCauQuanLy(c, maNVDangNhap);
+            ganNguoiThaoTac(c, maNVDangNhap);
+            String sql = "UPDATE dbo.SanPham SET soLuongTon = soLuongTon + ?, "
+                    + "tinhTrang = CASE WHEN tinhTrang='NGUNG_KINH_DOANH' "
+                    + "THEN 'NGUNG_KINH_DOANH' ELSE 'DANG_KINH_DOANH' END "
+                    + "WHERE maSP = ? AND soLuongTon <= 2147483647 - ?";
+            try (PreparedStatement ps = c.prepareStatement(sql)) {
+                for (Map.Entry<String, Integer> e : soLuong.entrySet()) {
+                    ps.setInt(1, e.getValue()); ps.setString(2, e.getKey());
+                    ps.setInt(3, e.getValue());
+                    if (ps.executeUpdate() != 1)
+                        throw new IllegalArgumentException("Không tìm thấy sản phẩm " + e.getKey()
+                                + " hoặc số lượng nhập vượt giới hạn INT.");
+                }
+            }
+            return soLuong.size();
         });
     }
 

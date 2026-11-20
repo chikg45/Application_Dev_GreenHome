@@ -7,6 +7,13 @@ import enums.DanhMucSP;
 import enums.TinhTrangSP;
 
 import java.util.List;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.nio.file.Path;
+import util.ExcelXlsx;
 
 /** Nghiep vu UC002 va SP-01...SP-08, khong viet SQL trong BUS. */
 public class SanPhamBUS {
@@ -97,6 +104,88 @@ public class SanPhamBUS {
         if (maSP == null || maSP.isBlank())
             throw new IllegalArgumentException("Mã sản phẩm không được trống.");
         return sanPhamDAO.xoa(maNVDangNhap, maSP);
+    }
+
+    /** Neu nguong chua cai dat (=0), dung nguong mac dinh 5 sp cho canh bao. */
+    public static int nguongCanhBao(SanPham p) {
+        return p.getSoLuongTonToiThieu() > 0 ? p.getSoLuongTonToiThieu() : 5;
+    }
+
+    public static boolean sapHetHang(SanPham p) {
+        return p.getTinhTrang() == TinhTrangSP.DangBan
+                && p.getSoLuongCoTheBan() > 0
+                && p.getSoLuongCoTheBan() <= nguongCanhBao(p);
+    }
+
+    /** Xem truoc file Excel; chua ghi DB, moi dong sai bao ro so dong. */
+    public List<SanPham> docExcel(Path file) {
+        List<ExcelXlsx.Dong> rows = ExcelXlsx.doc(file,
+                "maSP", "tenSP", "danhMuc", "maTH", "giaNiemYet", "soLuongTon");
+        Map<String, entity.ThuongHieu> thuongHieu = new HashMap<>();
+        for (entity.ThuongHieu th : thuongHieuDAO.layTatCa()) {
+            thuongHieu.put(th.getMaThuongHieu().toUpperCase(java.util.Locale.ROOT), th);
+        }
+        Set<String> daCo = new HashSet<>();
+        for (SanPham p : sanPhamDAO.layTatCa()) daCo.add(p.getMaSP().toUpperCase(java.util.Locale.ROOT));
+        List<SanPham> result = new ArrayList<>();
+        Set<String> trongFile = new HashSet<>();
+        for (ExcelXlsx.Dong row : rows) {
+            try {
+                String ma = row.batBuoc("maSP").toUpperCase(java.util.Locale.ROOT);
+                if (daCo.contains(ma)) throw new IllegalArgumentException("Mã sản phẩm " + ma + " đã có trong SQL Server.");
+                if (!trongFile.add(ma)) throw new IllegalArgumentException("Mã sản phẩm " + ma + " bị lặp trong Excel.");
+                String tenDM = row.batBuoc("danhMuc");
+                DanhMucSP danhMuc;
+                if (tenDM.matches("(?i)DM00[1-7]"))
+                    danhMuc = DanhMucSP.values()[Integer.parseInt(tenDM.substring(2))-1];
+                else danhMuc = DanhMucSP.tuTen(tenDM);
+                entity.ThuongHieu th = thuongHieu.get(row.batBuoc("maTH").toUpperCase(java.util.Locale.ROOT));
+                if (th == null) throw new IllegalArgumentException("Mã thương hiệu không tồn tại: " + row.lay("maTH"));
+                SanPham p = new SanPham(ma, row.batBuoc("tenSP"), danhMuc, th,
+                        row.lay("thongSoKyThuat"), ExcelXlsx.soThucDuong(row, "giaNiemYet"),
+                        row.lay("model"), row.lay("donViTinh").isEmpty() ? "Cái" : row.lay("donViTinh"),
+                        row.lay("moTaSP"), TinhTrangSP.DangBan,
+                        ExcelXlsx.soNguyen(row, "soLuongTon", 0),
+                        ExcelXlsx.soNguyen(row, "soLuongLoi", 0),
+                        ExcelXlsx.soNguyen(row, "soLuongTonToiThieu", 5), row.lay("hinhAnh"));
+                p.capNhatTinhTrang();
+                kiemTraDuLieu(p);
+                result.add(p);
+            } catch (RuntimeException ex) {
+                if (ex.getMessage()!=null && ex.getMessage().startsWith("Dòng ")) throw ex;
+                throw new IllegalArgumentException("Dòng " + row.soDong() + ": " + ex.getMessage(), ex);
+            }
+        }
+        return result;
+    }
+
+    /** Import them moi: tat ca thanh cong hoac tat ca rollback. */
+    public int nhapExcel(List<SanPham> danhSach) {
+        if (danhSach == null || danhSach.isEmpty())
+            throw new IllegalArgumentException("Không có sản phẩm để import.");
+        Set<String> ma = new HashSet<>();
+        for (SanPham p : danhSach) {
+            kiemTraDuLieu(p);
+            if (!ma.add(p.getMaSP().toUpperCase(java.util.Locale.ROOT)))
+                throw new IllegalArgumentException("Trùng mã sản phẩm trong file: " + p.getMaSP());
+            p.capNhatTinhTrang();
+        }
+        return sanPhamDAO.themHangLoat(maNVDangNhap, danhSach);
+    }
+
+    /** Nhap them ton kho, khong ghi de so luong dang co. */
+    public int boSungTonExcel(Path file) {
+        List<ExcelXlsx.Dong> rows = ExcelXlsx.doc(file, "maSP", "soLuongNhap");
+        Map<String, Integer> soLuong = new java.util.LinkedHashMap<>();
+        for (ExcelXlsx.Dong row : rows) {
+            String ma = row.batBuoc("maSP").toUpperCase(java.util.Locale.ROOT);
+            int sl = ExcelXlsx.soNguyen(row, "soLuongNhap", 0);
+            if (sl <= 0) throw new IllegalArgumentException("Dòng " + row.soDong()
+                    + ": số lượng nhập phải là số nguyên dương.");
+            if (soLuong.putIfAbsent(ma, sl) != null)
+                throw new IllegalArgumentException("Dòng " + row.soDong() + ": mã " + ma + " bị trùng.");
+        }
+        return sanPhamDAO.congTonHangLoat(maNVDangNhap, soLuong);
     }
 
     private SanPham layBatBuoc(String maSP) {

@@ -6,7 +6,9 @@ import entity.SanPham;
 import entity.ThuongHieu;
 import enums.DanhMucSP;
 import enums.TinhTrangSP;
+import util.HoTroPhimTat;
 import util.PhienDangNhap;
+import util.QuanLyHoanTac;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -15,16 +17,17 @@ import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.*;
 import java.text.NumberFormat;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.nio.file.Path;
 import java.util.concurrent.ExecutionException;
 
 /**
  * UC002 - Quan ly san pham. Du lieu that qua BUS -> DAO -> SQL Server.
- * Giao dien khong truy van SQL truc tiep va khong tao du lieu mau.
  */
-public class SanPhamPanel extends JPanel {
+public class SanPhamPanel extends JPanel implements HoTroPhimTat {
     private static final Color BG = new Color(30, 33, 37);
     private static final Color CARD = new Color(18, 19, 21);
     private static final Color BORDER = new Color(58, 62, 69);
@@ -38,6 +41,8 @@ public class SanPhamPanel extends JPanel {
     private final List<SanPham> tatCa = new ArrayList<>();
     private final List<SanPham> dangHienThi = new ArrayList<>();
     private final List<ThuongHieu> thuongHieus = new ArrayList<>();
+    private boolean dangTaiDuLieu;
+    private boolean canhBaoSauKhiTai;
     private final JTextField timKiem = new JTextField();
     private final JComboBox<Object> locDanhMuc = new JComboBox<>();
     private final JComboBox<Object> locTrangThai = new JComboBox<>();
@@ -46,12 +51,16 @@ public class SanPhamPanel extends JPanel {
     private final JLabel tong = new JLabel("0");
     private final JLabel coTheBan = new JLabel("0");
     private final JLabel ngungBan = new JLabel("0");
+    private final JLabel sapHet = new JLabel("0");
+    private final JCheckBox chiXemSapHet = new JCheckBox("Chỉ sắp hết");
     private final JButton them = nut("+ Thêm sản phẩm", true);
     private final JButton sua = nut("Sửa", false);
     private final JButton xoa = nut("Xóa", false);
-    private final JButton doiTrangThai = nut("Đang bán / Ngừng bán", false);
+    private final JButton doiTrangThai = nut("Ngừng / Mở lại kinh doanh", false);
     private final JButton thuongHieu = nut("Thương hiệu", false);
     private final JButton lamMoi = nut("Làm mới", false);
+    private final JButton nhapExcel = nut("Nhập Excel", true);
+    private final JButton boSungTon = nut("Cộng tồn Excel", false);
 
     private final DefaultTableModel model = new DefaultTableModel(new String[]{
             "Mã SP", "Tên sản phẩm", "Danh mục", "Thương hiệu", "Giá niêm yết",
@@ -65,10 +74,9 @@ public class SanPhamPanel extends JPanel {
 
     public SanPhamPanel(boolean laQuanLy) {
         this.laQuanLy = laQuanLy;
-        // maNV cua nhan vien da dang nhap, khong lay tu truong nhap tren UI.
         String maNV = null;
         try { maNV = PhienDangNhap.hienTai().getMaNV(); }
-        catch (IllegalStateException ignored) { /* Che do xem thu UI: khong co quyen ghi. */ }
+        catch (IllegalStateException ignored) {}
         this.sanPhamBUS = new SanPhamBUS(maNV);
         this.thuongHieuBUS = new ThuongHieuBUS(maNV);
 
@@ -79,8 +87,32 @@ public class SanPhamPanel extends JPanel {
         if (!laQuanLy) {
             them.setVisible(false); sua.setVisible(false); xoa.setVisible(false);
             doiTrangThai.setVisible(false); thuongHieu.setVisible(false);
+            nhapExcel.setVisible(false); boSungTon.setVisible(false);
         }
         SwingUtilities.invokeLater(this::taiDuLieu);
+    }
+
+    @Override
+    public void phimThemMoi() {
+        if (laQuanLy) moForm(null);
+    }
+
+    @Override
+    public void phimTimKiem() {
+        timKiem.requestFocusInWindow();
+        timKiem.selectAll();
+    }
+
+    @Override
+    public void phimLamMoi() {
+        taiDuLieu();
+    }
+
+    @Override
+    public void phimXoa() {
+        if (laQuanLy && dangChon() != null) {
+            xoaSanPham();
+        }
     }
 
     private void taoGiaoDien() {
@@ -94,27 +126,37 @@ public class SanPhamPanel extends JPanel {
         dau.add(tieuDe, BorderLayout.WEST);
         JPanel nutTren = new JPanel(new FlowLayout(FlowLayout.RIGHT, 7, 0));
         nutTren.setOpaque(false);
-        nutTren.add(lamMoi); nutTren.add(thuongHieu); nutTren.add(them);
+        them.setToolTipText("Thêm sản phẩm mới (Ctrl + N)");
+        lamMoi.setToolTipText("Làm mới dữ liệu (F5)");
+        xoa.setToolTipText("Xóa sản phẩm đang chọn (Delete)");
+        nutTren.add(lamMoi); nutTren.add(thuongHieu);
+        nutTren.add(boSungTon); nutTren.add(nhapExcel); nutTren.add(them);
         dau.add(nutTren, BorderLayout.EAST);
 
-        JPanel theThongKe = new JPanel(new GridLayout(1, 3, 13, 0));
+        JPanel theThongKe = new JPanel(new GridLayout(1, 4, 13, 0));
         theThongKe.setOpaque(false);
         theThongKe.add(the("Số sản phẩm", tong));
         theThongKe.add(the("Tổng số lượng có thể bán", coTheBan));
-        theThongKe.add(the("Mã sản phẩm ngừng bán", ngungBan));
+        theThongKe.add(the("Sắp hết hàng ⚠", sapHet));
+        sapHet.setForeground(new Color(231, 171, 61));
+        theThongKe.add(the("Sản phẩm ngừng bán", ngungBan));
         JPanel phanTren = new JPanel(new BorderLayout(0, 18));
         phanTren.setOpaque(false);
         phanTren.add(dau, BorderLayout.NORTH);
         phanTren.add(theThongKe, BorderLayout.CENTER);
         add(phanTren, BorderLayout.NORTH);
 
-        JPanel thanhLoc = new JPanel(new GridLayout(1, 4, 8, 0));
+        JPanel thanhLoc = new JPanel(new GridLayout(1, 5, 8, 0));
         thanhLoc.setOpaque(false);
-        dinhDangNhap(timKiem); timKiem.setToolTipText("Tìm mã, tên hoặc model");
+        dinhDangNhap(timKiem); timKiem.setToolTipText("Tìm mã, tên hoặc model (Ctrl + F)");
         timKiem.putClientProperty("JTextField.placeholderText", "Tìm mã, tên hoặc model...");
         thanhLoc.add(timKiem);
         dinhDangChon(locDanhMuc); dinhDangChon(locThuongHieu); dinhDangChon(locTrangThai);
         thanhLoc.add(locDanhMuc); thanhLoc.add(locThuongHieu); thanhLoc.add(locTrangThai);
+        chiXemSapHet.setOpaque(false);
+        chiXemSapHet.setForeground(new Color(231, 171, 61));
+        chiXemSapHet.setToolTipText("Còn bán nhưng số lượng có thể bán <= ngưỡng tồn tối thiểu; mặc định 5 nếu chưa thiết lập.");
+        thanhLoc.add(chiXemSapHet);
         locDanhMuc.addItem("Tất cả danh mục");
         for (DanhMucSP dm : DanhMucSP.values()) locDanhMuc.addItem(dm);
         locThuongHieu.addItem("Mọi thương hiệu");
@@ -166,6 +208,7 @@ public class SanPhamPanel extends JPanel {
         locDanhMuc.addActionListener(e -> apDungBoLoc());
         locThuongHieu.addActionListener(e -> apDungBoLoc());
         locTrangThai.addActionListener(e -> apDungBoLoc());
+        chiXemSapHet.addActionListener(e -> apDungBoLoc());
         bang.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) capNhatNut();
         });
@@ -183,6 +226,8 @@ public class SanPhamPanel extends JPanel {
         xoa.addActionListener(e -> xoaSanPham());
         doiTrangThai.addActionListener(e -> doiTrangThai());
         thuongHieu.addActionListener(e -> moQuanLyThuongHieu());
+        nhapExcel.addActionListener(e -> nhapExcelSanPham());
+        boSungTon.addActionListener(e -> boSungTonTuExcel());
         capNhatNut();
     }
 
@@ -198,7 +243,14 @@ public class SanPhamPanel extends JPanel {
         return p;
     }
 
+    public void canhBaoTonKhiMoTrang() {
+        canhBaoSauKhiTai = true;
+        taiDuLieu();
+    }
+
     private void taiDuLieu() {
+        if (dangTaiDuLieu) return;
+        dangTaiDuLieu = true;
         thongBao.setText("Đang đọc sản phẩm từ SQL Server...");
         lamMoi.setEnabled(false);
         new SwingWorker<DuLieu, Void>() {
@@ -206,7 +258,10 @@ public class SanPhamPanel extends JPanel {
                 return new DuLieu(sanPhamBUS.layTatCa(), thuongHieuBUS.layTatCa());
             }
             @Override protected void done() {
+                dangTaiDuLieu = false;
                 lamMoi.setEnabled(true);
+                boolean hienCanhBao = canhBaoSauKhiTai;
+                canhBaoSauKhiTai = false;
                 try {
                     DuLieu result = get();
                     tatCa.clear(); tatCa.addAll(result.sanPhams());
@@ -220,10 +275,69 @@ public class SanPhamPanel extends JPanel {
                         if (Objects.equals(th.getMaThuongHieu(), maChon)) locThuongHieu.setSelectedItem(th);
                     }
                     apDungBoLoc();
-                    thongBao.setText("Đã tải " + tatCa.size() + " sản phẩm từ CSDL");
+                    long canhBao = tatCa.stream().filter(SanPhamBUS::sapHetHang).count();
+                    long het = tatCa.stream().filter(p -> p.getTinhTrang() == TinhTrangSP.HetHang).count();
+                    thongBao.setText("Đã tải " + tatCa.size() + " sản phẩm | ⚠ Sắp hết: " + canhBao + " | Hết hàng: " + het);
+                    if (hienCanhBao && isShowing()) hienThiCanhBaoTonKho();
                 } catch (Exception e) { baoLoi(e); thongBao.setText("Không tải được dữ liệu SQL Server"); }
             }
         }.execute();
+    }
+
+    static List<SanPham> timSanPhamCanhBao(List<SanPham> danhSach) {
+        List<SanPham> canhBao = new ArrayList<>();
+        for (SanPham p : danhSach) {
+            if (p.getTinhTrang() != TinhTrangSP.NgungBan
+                    && p.getSoLuongCoTheBan() <= SanPhamBUS.nguongCanhBao(p)) {
+                canhBao.add(p);
+            }
+        }
+        canhBao.sort(Comparator.comparingInt(SanPham::getSoLuongCoTheBan)
+                .thenComparing(SanPham::getMaSP, String.CASE_INSENSITIVE_ORDER));
+        return canhBao;
+    }
+
+    private void hienThiCanhBaoTonKho() {
+        List<SanPham> canhBao = timSanPhamCanhBao(tatCa);
+        if (canhBao.isEmpty()) return;
+
+        long hetHang = canhBao.stream().filter(p -> p.getSoLuongCoTheBan() == 0).count();
+        long sapHetHang = canhBao.size() - hetHang;
+
+        JPanel noiDung = new JPanel(new BorderLayout(0, 12));
+        JLabel nhacNho = new JLabel("<html><b>Cảnh báo tồn kho: " + sapHetHang
+                + " sản phẩm sắp hết, " + hetHang + " sản phẩm đã hết.</b>"
+                + "<br>Vui lòng nhập thêm hàng hoặc thông báo quản lý để bổ sung tồn kho.</html>");
+        noiDung.add(nhacNho, BorderLayout.NORTH);
+
+        DefaultTableModel bangCanhBaoModel = new DefaultTableModel(
+                new String[]{"Mã SP", "Tên sản phẩm", "Còn bán", "Ngưỡng", "Tình trạng"}, 0) {
+            @Override public boolean isCellEditable(int row, int column) { return false; }
+        };
+        for (SanPham p : canhBao) {
+            bangCanhBaoModel.addRow(new Object[]{
+                    p.getMaSP(), p.getTenSP(), p.getSoLuongCoTheBan(),
+                    SanPhamBUS.nguongCanhBao(p),
+                    p.getSoLuongCoTheBan() == 0 ? "Hết hàng" : "Sắp hết hàng"
+            });
+        }
+        JTable bangCanhBao = new JTable(bangCanhBaoModel);
+        bangCanhBao.setRowHeight(28);
+        bangCanhBao.setFillsViewportHeight(true);
+        bangCanhBao.setAutoCreateRowSorter(true);
+        bangCanhBao.getColumnModel().getColumn(0).setPreferredWidth(100);
+        bangCanhBao.getColumnModel().getColumn(1).setPreferredWidth(280);
+        bangCanhBao.getColumnModel().getColumn(2).setPreferredWidth(75);
+        bangCanhBao.getColumnModel().getColumn(3).setPreferredWidth(75);
+        bangCanhBao.getColumnModel().getColumn(4).setPreferredWidth(105);
+
+        JScrollPane cuon = new JScrollPane(bangCanhBao);
+        cuon.setPreferredSize(new Dimension(680, Math.min(290, 28 * (canhBao.size() + 1) + 4)));
+        noiDung.add(cuon, BorderLayout.CENTER);
+        noiDung.add(new JLabel("Gợi ý: dùng 'Cộng tồn Excel' để nhập số lượng cho nhiều sản phẩm cùng lúc."),
+                BorderLayout.SOUTH);
+        JOptionPane.showMessageDialog(this, noiDung,
+                "Green Home - Cảnh báo sản phẩm tồn kho thấp", JOptionPane.WARNING_MESSAGE);
     }
 
     private void apDungBoLoc() {
@@ -235,11 +349,12 @@ public class SanPhamPanel extends JPanel {
         dangHienThi.clear(); model.setRowCount(0);
         NumberFormat tien = NumberFormat.getNumberInstance(new Locale("vi", "VN"));
         for (SanPham p : tatCa) {
-            if (!key.isEmpty() && !( (p.getMaSP() + " " + p.getTenSP() + " " + String.valueOf(p.getModel()))
+            if (!key.isEmpty() && !((p.getMaSP() + " " + p.getTenSP() + " " + String.valueOf(p.getModel()))
                     .toLowerCase(Locale.ROOT).contains(key))) continue;
             if (danhMuc instanceof DanhMucSP dm && p.getDanhMuc() != dm) continue;
             if (tinhTrang instanceof TinhTrangSP tt && p.getTinhTrang() != tt) continue;
             if (th instanceof ThuongHieu t && !t.getMaThuongHieu().equals(p.getThuongHieu().getMaThuongHieu())) continue;
+            if (chiXemSapHet.isSelected() && !SanPhamBUS.sapHetHang(p)) continue;
             dangHienThi.add(p);
             model.addRow(new Object[]{p.getMaSP(), p.getTenSP(), p.getDanhMuc(),
                     p.getThuongHieu().getTenThuongHieu(), tien.format(p.getGiaNiemYet()) + " đ",
@@ -248,6 +363,7 @@ public class SanPhamPanel extends JPanel {
         tong.setText(String.valueOf(tatCa.size()));
         coTheBan.setText(String.valueOf(tatCa.stream().filter(p -> p.getTinhTrang() == TinhTrangSP.DangBan)
                 .mapToInt(SanPham::getSoLuongCoTheBan).sum()));
+        sapHet.setText(String.valueOf(tatCa.stream().filter(SanPhamBUS::sapHetHang).count()));
         ngungBan.setText(String.valueOf(tatCa.stream().filter(p -> p.getTinhTrang() == TinhTrangSP.NgungBan).count()));
         capNhatNut();
     }
@@ -277,6 +393,7 @@ public class SanPhamPanel extends JPanel {
                 + "\nModel: " + p.getModel() + "\nGiá đã gồm VAT: " + p.getGiaNiemYet()
                 + "\nTồn: " + p.getSoLuongTon() + "\nHàng lỗi: " + p.getSoLuongLoi()
                 + "\nCó thể bán: " + p.getSoLuongCoTheBan() + "\nTình trạng: " + p.getTinhTrang()
+                + (SanPhamBUS.sapHetHang(p) ? "\n⚠ Sắp hết hàng! Ngưỡng: " + SanPhamBUS.nguongCanhBao(p) : "")
                 + "\nThông số: " + p.getThongSoKyThuat() + "\nMô tả: " + p.getMoTaSP(),
                 "Chi tiết sản phẩm", JOptionPane.INFORMATION_MESSAGE);
     }
@@ -284,6 +401,7 @@ public class SanPhamPanel extends JPanel {
     private void moForm(SanPham cu) {
         if (!laQuanLy || !PhienDangNhapDaCo()) return;
         if (thuongHieus.isEmpty()) { thongDiep("Cần có thương hiệu trước khi thêm sản phẩm."); return; }
+        final SanPham banSaoCu = (cu == null) ? null : new SanPham(cu);
         JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(this),
                 cu == null ? "Thêm sản phẩm" : "Cập nhật sản phẩm", Dialog.ModalityType.APPLICATION_MODAL);
         dialog.setSize(690, 740); dialog.setLocationRelativeTo(this);
@@ -301,8 +419,10 @@ public class SanPhamPanel extends JPanel {
         JTextField gia = nhap(cu == null ? "" : String.valueOf(cu.getGiaNiemYet()));
         JTextField ton = nhap(cu == null ? "0" : String.valueOf(cu.getSoLuongTon()));
         JTextField loi = nhap(cu == null ? "0" : String.valueOf(cu.getSoLuongLoi()));
-        JTextField toiThieu = nhap(cu == null ? "0" : String.valueOf(cu.getSoLuongTonToiThieu()));
-        JComboBox<TinhTrangSP> trangThai = new JComboBox<>(new TinhTrangSP[]{TinhTrangSP.DangBan, TinhTrangSP.NgungBan});
+        JTextField toiThieu = nhap(cu == null ? "5" : String.valueOf(cu.getSoLuongTonToiThieu()));
+        JCheckBox ngungKinhDoanh = new JCheckBox("Chủ động ngừng kinh doanh");
+        ngungKinhDoanh.setOpaque(false);
+        ngungKinhDoanh.setForeground(TEXT);
         JTextField hinh = nhap(cu == null ? "" : cu.getHinhAnh());
         JTextArea thongSo = area(cu == null ? "" : cu.getThongSoKyThuat());
         JTextArea moTa = area(cu == null ? "" : cu.getMoTaSP());
@@ -311,14 +431,14 @@ public class SanPhamPanel extends JPanel {
             for (int i = 0; i < th.getItemCount(); i++)
                 if (th.getItemAt(i).getMaThuongHieu().equals(cu.getThuongHieu().getMaThuongHieu()))
                     th.setSelectedIndex(i);
-            trangThai.setSelectedItem(cu.getTinhTrang() == TinhTrangSP.NgungBan ? TinhTrangSP.NgungBan : TinhTrangSP.DangBan);
+            ngungKinhDoanh.setSelected(cu.getTinhTrang() == TinhTrangSP.NgungBan);
         }
         fields.add(cot("Mã sản phẩm *", ma)); fields.add(cot("Tên sản phẩm *", ten));
         fields.add(cot("Danh mục *", dm)); fields.add(cot("Thương hiệu *", th));
         fields.add(cot("Model", modelField)); fields.add(cot("Đơn vị tính *", dvt));
         fields.add(cot("Giá niêm yết (đã VAT) *", gia)); fields.add(cot("Số lượng tồn", ton));
         fields.add(cot("Số lượng lỗi", loi)); fields.add(cot("Tồn tối thiểu", toiThieu));
-        fields.add(cot("Trạng thái kinh doanh", trangThai)); fields.add(cot("Hình ảnh (đường dẫn)", hinh));
+        fields.add(cot("Tự xét Đang bán/Hết hàng theo tồn; chỉ chọn nếu ngừng kinh doanh", ngungKinhDoanh)); fields.add(cot("Hình ảnh (đường dẫn)", hinh));
         fields.add(cot("Thông số kỹ thuật", new JScrollPane(thongSo)));
         fields.add(cot("Mô tả", new JScrollPane(moTa)));
         JScrollPane sc = new JScrollPane(fields);
@@ -334,12 +454,35 @@ public class SanPhamPanel extends JPanel {
                         ma.getText().trim(), ten.getText().trim(), (DanhMucSP) dm.getSelectedItem(),
                         (ThuongHieu) th.getSelectedItem(), thongSo.getText().trim(),
                         Double.parseDouble(gia.getText().trim()), modelField.getText().trim(),
-                        dvt.getText().trim(), moTa.getText().trim(), (TinhTrangSP) trangThai.getSelectedItem(),
+                        dvt.getText().trim(), moTa.getText().trim(),
+                        ngungKinhDoanh.isSelected() ? TinhTrangSP.NgungBan : TinhTrangSP.DangBan,
                         Integer.parseInt(ton.getText().trim()), Integer.parseInt(loi.getText().trim()),
                         Integer.parseInt(toiThieu.getText().trim()), hinh.getText().trim());
-                // BUS cap nhat HetHang tu dong theo tinh trang va luong co the ban.
-                thucHien(cu == null ? "Thêm sản phẩm" : "Cập nhật sản phẩm",
-                        () -> cu == null ? sanPhamBUS.themSanPham(p) : sanPhamBUS.capNhatSanPham(p), dialog);
+                if (cu == null) {
+                    thucHien("Thêm sản phẩm", () -> {
+                        boolean ok = sanPhamBUS.themSanPham(p);
+                        if (ok) {
+                            QuanLyHoanTac.ghiNhan(
+                                "Xóa sản phẩm vừa thêm " + p.getMaSP(),
+                                () -> sanPhamBUS.xoaSanPham(p.getMaSP()),
+                                this::taiDuLieu
+                            );
+                        }
+                        return ok;
+                    }, dialog);
+                } else {
+                    thucHien("Cập nhật sản phẩm", () -> {
+                        boolean ok = sanPhamBUS.capNhatSanPham(p);
+                        if (ok && banSaoCu != null) {
+                            QuanLyHoanTac.ghiNhan(
+                                "Khôi phục dữ liệu sản phẩm " + banSaoCu.getMaSP(),
+                                () -> sanPhamBUS.capNhatSanPham(banSaoCu),
+                                this::taiDuLieu
+                            );
+                        }
+                        return ok;
+                    }, dialog);
+                }
             } catch (RuntimeException ex) { baoLoi(ex); }
         });
         btns.add(huy); btns.add(luu);
@@ -347,22 +490,118 @@ public class SanPhamPanel extends JPanel {
         dialog.setContentPane(root); dialog.setVisible(true);
     }
 
+    private Path chonExcel() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Chọn file Excel .xlsx theo mẫu Green Home");
+        chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("Excel (*.xlsx)", "xlsx"));
+        return chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION
+                ? chooser.getSelectedFile().toPath() : null;
+    }
+
+    private void nhapExcelSanPham() {
+        if (!laQuanLy || !PhienDangNhapDaCo()) return;
+        Path file = chonExcel(); if (file == null) return;
+        nhapExcel.setEnabled(false);
+        thongBao.setText("Đang kiểm tra Excel và các thương hiệu...");
+        new SwingWorker<List<SanPham>, Void>() {
+            @Override protected List<SanPham> doInBackground() {
+                return sanPhamBUS.docExcel(file);
+            }
+            @Override protected void done() {
+                nhapExcel.setEnabled(true);
+                try {
+                    List<SanPham> ds = get();
+                    StringBuilder preview = new StringBuilder("File: " + file.getFileName()
+                            + "\n" + ds.size() + " sản phẩm hợp lệ, chưa ghi CSDL.\n\n");
+                    for (int i = 0; i < Math.min(ds.size(), 8); i++) {
+                        SanPham p = ds.get(i);
+                        preview.append(p.getMaSP()).append(" - ").append(p.getTenSP())
+                                .append(" | tồn: ").append(p.getSoLuongTon())
+                                .append(" | ").append(p.getTinhTrang()).append("\n");
+                    }
+                    if (ds.size() > 8) preview.append("... và ").append(ds.size() - 8).append(" sản phẩm khác.\n");
+                    preview.append("\nXác nhận thêm TẤT CẢ? Nếu một dòng lỗi SQL sẽ rollback toàn bộ.");
+                    int ok = JOptionPane.showConfirmDialog(SanPhamPanel.this, preview.toString(),
+                            "Xác nhận nhập sản phẩm từ Excel", JOptionPane.YES_NO_OPTION);
+                    if (ok != JOptionPane.YES_OPTION) { thongBao.setText("Đã hủy import Excel."); return; }
+                    nhapExcel.setEnabled(false);
+                    new SwingWorker<Integer, Void>() {
+                        @Override protected Integer doInBackground() { return sanPhamBUS.nhapExcel(ds); }
+                        @Override protected void done() {
+                            nhapExcel.setEnabled(true);
+                            try {
+                                thongDiep("Đã thêm " + get() + " sản phẩm từ Excel vào SQL Server.");
+                                taiDuLieu();
+                            } catch (Exception e) { baoLoi(e); }
+                        }
+                    }.execute();
+                } catch (Exception e) { baoLoi(e); }
+            }
+        }.execute();
+    }
+
+    private void boSungTonTuExcel() {
+        if (!laQuanLy || !PhienDangNhapDaCo()) return;
+        Path file = chonExcel(); if (file == null) return;
+        int ok = JOptionPane.showConfirmDialog(this,
+                "CỘNG số lượng vào tồn kho (không ghi đè)?\nFile: " + file.getFileName()
+                + "\nCác mã không tồn tại hoặc số lượng sai sẽ khiến toàn bộ giao dịch rollback.",
+                "Xác nhận cộng tồn hàng loạt", JOptionPane.YES_NO_OPTION);
+        if (ok != JOptionPane.YES_OPTION) return;
+        boSungTon.setEnabled(false);
+        new SwingWorker<Integer, Void>() {
+            @Override protected Integer doInBackground() { return sanPhamBUS.boSungTonExcel(file); }
+            @Override protected void done() {
+                boSungTon.setEnabled(true);
+                try {
+                    thongDiep("Đã cộng tồn cho " + get() + " sản phẩm. Trạng thái được tự cập nhật.");
+                    taiDuLieu();
+                } catch (Exception e) { baoLoi(e); }
+            }
+        }.execute();
+    }
+
     private void xoaSanPham() {
         SanPham p = dangChon(); if (p == null) return;
+        final SanPham spCu = new SanPham(p);
         int x = JOptionPane.showConfirmDialog(this,
                 "Xóa sản phẩm " + p.getMaSP() + "?\nSản phẩm đã phát sinh giao dịch không được xóa vĩnh viễn.",
                 "Xác nhận xóa", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
-        if (x == JOptionPane.YES_OPTION) thucHien("Xóa sản phẩm", () -> sanPhamBUS.xoaSanPham(p.getMaSP()), null);
+        if (x == JOptionPane.YES_OPTION) {
+            thucHien("Xóa sản phẩm", () -> {
+                boolean ok = sanPhamBUS.xoaSanPham(spCu.getMaSP());
+                if (ok) {
+                    QuanLyHoanTac.ghiNhan(
+                        "Khôi phục sản phẩm đã xóa " + spCu.getMaSP() + " - " + spCu.getTenSP(),
+                        () -> sanPhamBUS.themSanPham(spCu),
+                        this::taiDuLieu
+                    );
+                }
+                return ok;
+            }, null);
+        }
     }
 
     private void doiTrangThai() {
         SanPham p = dangChon(); if (p == null) return;
+        final SanPham spCu = new SanPham(p);
         TinhTrangSP moi = p.getTinhTrang() == TinhTrangSP.NgungBan ? TinhTrangSP.DangBan : TinhTrangSP.NgungBan;
         int x = JOptionPane.showConfirmDialog(this,
                 "Đổi trạng thái " + p.getMaSP() + " thành " + moi + "?", "Xác nhận",
                 JOptionPane.YES_NO_OPTION);
-        if (x == JOptionPane.YES_OPTION)
-            thucHien("Đổi trạng thái", () -> sanPhamBUS.doiTinhTrang(p.getMaSP(), moi), null);
+        if (x == JOptionPane.YES_OPTION) {
+            thucHien("Đổi trạng thái", () -> {
+                boolean ok = sanPhamBUS.doiTinhTrang(spCu.getMaSP(), moi);
+                if (ok) {
+                    QuanLyHoanTac.ghiNhan(
+                        "Khôi phục trạng thái sản phẩm " + spCu.getMaSP(),
+                        () -> sanPhamBUS.capNhatSanPham(spCu),
+                        this::taiDuLieu
+                    );
+                }
+                return ok;
+            }, null);
+        }
     }
 
     private void moQuanLyThuongHieu() {
@@ -382,15 +621,15 @@ public class SanPhamPanel extends JPanel {
         capNhatDanhSach.run();
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         JButton add = new JButton("Thêm"), edit = new JButton("Sửa"), delete = new JButton("Xóa");
-        actions.add(add);actions.add(edit);actions.add(delete);
+        actions.add(add); actions.add(edit); actions.add(delete);
         add.addActionListener(e -> moFormThuongHieu(null, dialog));
         edit.addActionListener(e -> {
-            int row = bangTH.getSelectedRow();if (row < 0) { thongDiep("Chọn thương hiệu cần sửa."); return; }
+            int row = bangTH.getSelectedRow(); if (row < 0) { thongDiep("Chọn thương hiệu cần sửa."); return; }
             String ma = String.valueOf(m.getValueAt(bangTH.convertRowIndexToModel(row), 0));
             for (ThuongHieu b : thuongHieus) if (b.getMaThuongHieu().equals(ma)) { moFormThuongHieu(b, dialog); break; }
         });
         delete.addActionListener(e -> {
-            int row = bangTH.getSelectedRow();if (row < 0) { thongDiep("Chọn thương hiệu cần xóa."); return; }
+            int row = bangTH.getSelectedRow(); if (row < 0) { thongDiep("Chọn thương hiệu cần xóa."); return; }
             String ma = String.valueOf(m.getValueAt(bangTH.convertRowIndexToModel(row), 0));
             if (JOptionPane.showConfirmDialog(dialog, "Xóa thương hiệu " + ma + "?", "Xác nhận",
                     JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION)
@@ -438,10 +677,12 @@ public class SanPhamPanel extends JPanel {
 
     private void baoLoi(Throwable e) {
         Throwable cause = e;
-        if (cause instanceof ExecutionException && cause.getCause() != null) cause = cause.getCause();
+        while (cause.getCause() != null && (cause instanceof ExecutionException || cause instanceof java.util.concurrent.CompletionException))
+            cause = cause.getCause();
         thongBao.setText("Lỗi: " + cause.getMessage());
         JOptionPane.showMessageDialog(this, cause.getMessage(), "Green Home - Lỗi", JOptionPane.ERROR_MESSAGE);
     }
+
     private void thongDiep(String text) {
         JOptionPane.showMessageDialog(this, text, "Green Home", JOptionPane.INFORMATION_MESSAGE);
     }
@@ -452,6 +693,7 @@ public class SanPhamPanel extends JPanel {
         label.setFont(new Font("SansSerif", bold ? Font.BOLD : Font.PLAIN, font));
         return label;
     }
+
     private static JButton nut(String text, boolean primary) {
         JButton button = new JButton(text);
         button.setFocusPainted(false);
@@ -460,28 +702,33 @@ public class SanPhamPanel extends JPanel {
         button.setBorder(new EmptyBorder(10, 13, 10, 13));
         return button;
     }
+
     private static JTextField nhap(String text) {
         JTextField f = new JTextField(text == null ? "" : text);
         dinhDangNhap(f);
         return f;
     }
+
     private static void dinhDangNhap(JTextField f) {
         f.setBackground(CARD); f.setForeground(TEXT); f.setCaretColor(TEXT);
         f.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(BORDER),
                 new EmptyBorder(7, 8, 7, 8)));
     }
+
     private static void dinhDangChon(JComboBox<?> c) {
         c.setBackground(CARD); c.setForeground(TEXT);
         c.setBorder(BorderFactory.createLineBorder(BORDER));
     }
+
     private static JTextArea area(String text) {
         JTextArea a = new JTextArea(text == null ? "" : text, 3, 16);
         a.setLineWrap(true); a.setWrapStyleWord(true);
         a.setBackground(CARD); a.setForeground(TEXT); a.setCaretColor(TEXT);
         return a;
     }
+
     private static JPanel cot(String label, Component field) {
-        JPanel p = new JPanel(new BorderLayout(0, 6));p.setOpaque(false);
+        JPanel p = new JPanel(new BorderLayout(0, 6)); p.setOpaque(false);
         p.add(nhan(label, 12, false), BorderLayout.NORTH);
         p.add(field, BorderLayout.CENTER);
         return p;
