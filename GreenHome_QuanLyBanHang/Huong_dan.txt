@@ -1,0 +1,9 @@
+﻿GreenHome | QuanLyBanHang
+
+1. Trong SSMS, kết nối đến instance SQL Server mà project đang sử dụng. Mở 01_QuanLyBanHang.sql, bỏ chọn đoạn văn bản nếu có rồi nhấn F5 để chạy toàn bộ. Tệp dùng được trong chế độ truy vấn thông thường trên SQL Server 2019 trở lên.
+2. Nếu database chưa có hoặc hoàn toàn trống, tệp tạo cấu trúc dựa trên project GreenHome_QuetMa_DoiTra_Eclipse.zip. Nếu database đã có bộ bảng gốc, tệp kiểm tra các cột, sequence, áp dụng phần nâng cấp đổi trả/quét mã và bổ sung dữ liệu mẫu. Nếu cấu trúc thiếu hoặc mã bị xung đột, xem lỗi đầu tiên trong Messages. Các thay đổi bảng và dữ liệu của lần cài lỗi sẽ được hoàn tác.
+3. Chờ thông báo “Đã hoàn tất cài đặt QuanLyBanHang.” Xem MaHoaDonThuDoiTra trong Results và ghi lại mã hóa đơn để thử.
+4. Ở config/db.properties của project, đặt databaseName=QuanLyBanHang. Giữ máy chủ, cổng và tài khoản SQL Server đã kết nối thành công. Có thể chạy tools.KiemTraKetNoi trong Eclipse trước khi chạy ui.LoginFrame.
+5. Với bản cài mới, đăng nhập banhang / BanHang@2026 để bán hàng, admin / QuanLy@2026 để duyệt đổi trả. Với database đang dùng, mật khẩu tài khoản đã có được giữ nguyên. Tài khoản banhang được tạo với mật khẩu mẫu nếu chưa có.
+6. Mở một trong 4 ảnh SP9801–SP9804 trên điện thoại hoặc in Ma_vach_A4.pdf. Trong Bán hàng → Quét mã bằng camera, cho phép dùng webcam, giữ tem thẳng để quét. SP9801 thêm một chuột không dây M1. Đưa tem ra khỏi khung ít nhất một giây trước khi quét lại cùng một tem.
+7. Để thử đổi trả, đăng nhập nhân viên, tìm mã hóa đơn trong Results, lập phiếu cho chuột hoặc bàn phím. Dùng quản lý để duyệt rồi quay lại tài khoản nhân viên đã lập để hoàn tất. Hóa đơn mẫu lập tại thời điểm cài, tổng 500.000 đồng. Quá hạn đổi trả, bán một đơn mới để thử.
